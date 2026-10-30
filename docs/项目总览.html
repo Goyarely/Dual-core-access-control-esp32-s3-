@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>双核智能门禁系统 · 项目总览</title>
+<style>
+:root{
+  --ink:#1c2330; --mut:#5c6675; --faint:#8a94a3;
+  --blue:#185fa5; --blue-50:#e6f1fb; --blue-100:#b5d4f4;
+  --teal:#0f6e56; --teal-50:#e1f5ee; --teal-100:#9fe1cb;
+  --green:#2e7d32; --red:#b3261e; --amber:#b26a00;
+  --line:#dde3ea; --bg:#f7f8fa; --card:#ffffff;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif;color:var(--ink);background:var(--bg);line-height:1.65;font-size:15px}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+/* ---------- nav ---------- */
+nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;gap:4px;align-items:center;height:52px;overflow-x:auto}
+nav a{color:var(--mut);text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:8px;white-space:nowrap}
+nav a:hover{background:var(--blue-50);color:var(--blue)}
+nav .brand{font-weight:600;color:var(--ink);margin-right:12px;white-space:nowrap}
+/* ---------- hero ---------- */
+header{background:linear-gradient(180deg,#0e2a47,#123a63);color:#fff;padding:64px 0 56px}
+header h1{font-size:34px;font-weight:600;letter-spacing:.5px}
+header p.sub{color:#bcd4ec;margin-top:10px;font-size:16px;max-width:720px}
+.chips{margin-top:22px;display:flex;gap:10px;flex-wrap:wrap}
+.chip{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:5px 14px;border-radius:999px;font-size:13px;color:#dceafc}
+.meta{margin-top:26px;display:flex;gap:28px;flex-wrap:wrap;font-size:13px;color:#9db8d4}
+.meta b{color:#fff;font-weight:500}
+/* ---------- sections ---------- */
+section{padding:52px 0 8px}
+h2{font-size:23px;font-weight:600;display:flex;align-items:center;gap:10px}
+h2 .no{font-size:12px;color:var(--blue);background:var(--blue-50);border:1px solid var(--blue-100);border-radius:6px;padding:2px 8px;font-weight:500}
+p.lead{color:var(--mut);margin:10px 0 24px;max-width:860px}
+h3{font-size:16.5px;font-weight:600;margin:26px 0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin-bottom:16px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.tag{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:999px;font-weight:500}
+.tag.b{background:var(--blue-50);color:var(--blue)}
+.tag.t{background:var(--teal-50);color:var(--teal)}
+.tag.r{background:#fcebeb;color:var(--red)}
+.tag.a{background:#faf0dd;color:var(--amber)}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin:10px 0 6px}
+th{text-align:left;font-weight:600;color:var(--mut);border-bottom:1.5px solid var(--line);padding:8px 10px;white-space:nowrap}
+td{border-bottom:1px solid var(--line);padding:8px 10px;vertical-align:top}
+tr:last-child td{border-bottom:none}
+code{font-family:"JetBrains Mono",Consolas,monospace;font-size:.92em;background:#eef1f5;border-radius:5px;padding:1px 6px;color:#28405e}
+pre{font-family:"JetBrains Mono",Consolas,monospace;font-size:12.8px;line-height:1.75;background:#0f1722;color:#d7e3f0;border-radius:14px;padding:20px 22px;overflow-x:auto}
+pre .d{color:#7fb3e8}      /* 目录 */
+pre .f{color:#e8eef5}      /* 文件 */
+pre .c{color:#7a8ba0}      /* 注释 */
+pre .h{color:#ffd08a}      /* 关键 */
+.note{border-left:3px solid var(--blue);background:var(--blue-50);border-radius:0 10px 10px 0;padding:12px 16px;font-size:13.5px;color:#274a6e;margin:14px 0}
+.note.t{border-color:var(--teal);background:var(--teal-50);color:#14503f}
+.note.a{border-color:var(--amber);background:#faf3e3;color:#6e4a12}
+ul.clean{list-style:none}
+ul.clean li{padding:6px 0 6px 22px;position:relative}
+ul.clean li::before{content:"";position:absolute;left:2px;top:14px;width:7px;height:7px;border-radius:2px;background:var(--blue-100)}
+.flow{display:flex;gap:0;flex-wrap:wrap;align-items:stretch;margin:16px 0}
+.flow .step{flex:1;min-width:150px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;position:relative;margin-right:26px;margin-bottom:10px}
+.flow .step::after{content:"";position:absolute;right:-19px;top:50%;transform:translateY(-50%);border:7px solid transparent;border-left-color:#b9c4d0}
+.flow .step:last-child{margin-right:0}
+.flow .step:last-child::after{display:none}
+.flow .step b{font-size:13.5px;display:block;margin-bottom:3px}
+.flow .step span{font-size:12.5px;color:var(--mut)}
+.kname{font-weight:600;font-size:14.5px;margin-bottom:4px}
+.kdesc{font-size:13px;color:var(--mut)}
+/* ---------- 屏幕样机 ---------- */
+.screens{display:grid;grid-template-columns:repeat(4,1fr);gap:26px 20px;margin-top:8px}
+@media(max-width:980px){.screens{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.screens{grid-template-columns:1fr}}
+.scr-item{display:flex;flex-direction:column;align-items:center}
+.bezel{width:238px;height:358px;border-radius:22px;background:#11151b;padding:9px;box-shadow:0 4px 14px rgba(15,23,34,.18)}
+.screen{width:100%;height:100%;border-radius:14px;overflow:hidden;position:relative;display:flex;flex-direction:column;font-size:12px}
+.sbar{height:26px;display:flex;justify-content:space-between;align-items:center;padding:0 12px;font-size:10.5px;flex:none}
+.scap{margin-top:12px;text-align:center}
+.scap b{font-size:13.5px;font-weight:600;display:block}
+.scap span{font-size:12px;color:var(--mut);display:block;margin-top:3px;line-height:1.5}
+/* 屏内通用 */
+.facebox{position:absolute;left:50%;top:44%;width:88px;height:108px;transform:translate(-50%,-50%)}
+.fb{position:absolute;width:20px;height:20px;border:3px solid #4ce08a}
+.fb.tl{left:0;top:0;border-right:none;border-bottom:none;border-radius:6px 0 0 0}
+.fb.tr{right:0;top:0;border-left:none;border-bottom:none;border-radius:0 6px 0 0}
+.fb.bl{left:0;bottom:0;border-right:none;border-top:none;border-radius:0 0 0 6px}
+.fb.br{right:0;bottom:0;border-left:none;border-top:none;border-radius:0 0 6px 0}
+.ghostface{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);width:70px;height:92px;border:2px dashed rgba(120,150,180,.45);border-radius:36px}
+.ghostface::before{content:"";position:absolute;left:14px;top:38px;width:12px;height:4px;border-radius:2px;background:rgba(120,150,180,.4);box-shadow:30px 0 0 rgba(120,150,180,.4)}
+.ghostface::after{content:"";position:absolute;left:24px;bottom:16px;width:22px;height:3px;border-radius:2px;background:rgba(120,150,180,.35)}
+/* 1 待机 */
+.s-standby{background:#0d131b;color:#c9d6e2}
+.s-standby .sbar{color:#7d8ea0}
+.st-hint{margin-top:auto;background:rgba(28,40,54,.9);color:#cfe0ef;text-align:center;padding:9px 0;font-size:12px;letter-spacing:1px}
+.st-led{display:inline-block;width:7px;height:7px;border-radius:50%;background:#3ddc78;margin-right:5px}
+/* 2 识别中 */
+.s-scan{background:#0d131b;color:#c9d6e2}
+.s-scan .sbar{color:#7d8ea0}
+.scan-st{margin-top:auto;text-align:center;padding:10px 0;background:rgba(20,32,45,.92);color:#dfeaf4}
+.dotanim{display:inline-block;animation:dots 1.2s steps(4) infinite}
+@keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
+/* 3 活体 */
+.s-live{background:#0d131b;color:#eaf2f8}
+.s-live .sbar{color:#7d8ea0}
+.live-tip{position:absolute;left:0;right:0;top:16%;text-align:center;font-size:17px;font-weight:600;color:#ffd166;text-shadow:0 1px 4px rgba(0,0,0,.5)}
+.live-arr{position:absolute;left:0;right:0;top:26%;text-align:center;font-size:26px;color:#ffd166}
+.live-bar{margin-top:auto;height:6px;background:#22303f}
+.live-bar i{display:block;height:100%;width:62%;background:#ffd166;border-radius:0 3px 3px 0}
+/* 4 成功 */
+.s-ok{background:#1f7a33;color:#fff;align-items:center;justify-content:center;text-align:center}
+.ok-ic{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;font-size:34px;margin:0 auto 14px}
+.ok-name{font-size:24px;font-weight:600;letter-spacing:2px}
+.ok-sub{font-size:12px;color:#c9ecd1;margin-top:6px}
+.ok-foot{margin-top:auto;background:rgba(0,0,0,.22);width:100%;text-align:center;padding:9px 0;font-size:12px}
+/* 5 拒绝 */
+.s-no{background:#a72b22;color:#fff;align-items:center;justify-content:center;text-align:center}
+.no-ic{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 14px}
+.no-reason{display:flex;gap:8px;justify-content:center;margin:10px 0}
+.no-reason i{font-style:normal;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:2px 12px;font-size:11px}
+.no-reason i.on{background:#fff;color:#a72b22;font-weight:600}
+.no-foot{margin-top:auto;background:rgba(0,0,0,.22);width:100%;text-align:center;padding:9px 0;font-size:12px}
+/* 6 菜单 */
+.s-menu{background:#f2f4f7;color:#222b38}
+.m-head{background:var(--blue);color:#fff;padding:10px 14px;font-size:14px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.m-item{background:#fff;margin:9px 12px 0;border-radius:10px;padding:11px 14px;display:flex;align-items:center;gap:10px;border:1px solid #e4e9f0;font-size:13px}
+.m-item .ic{width:26px;height:26px;border-radius:8px;background:var(--blue-50);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:13px}
+.m-item .arr{margin-left:auto;color:#b7c1cd}
+.m-foot{margin-top:auto;text-align:center;color:#98a3b1;font-size:10.5px;padding:8px}
+/* 7 录入 */
+.s-enroll{background:#f2f4f7;color:#222b38}
+.e-stage{position:relative;height:172px;background:#101720;overflow:hidden}
+.e-tip{padding:12px 16px 0;font-size:13px;font-weight:600}
+.e-bar{margin:10px 16px;height:8px;background:#e0e5ec;border-radius:4px;overflow:hidden}
+.e-bar i{display:block;height:100%;width:66%;background:var(--blue);border-radius:4px}
+.e-sub{padding:0 16px;color:var(--mut);font-size:11.5px}
+/* 8 锁定 */
+.s-lock{background:#8a5a00;color:#fff;align-items:center;justify-content:center;text-align:center}
+.s-lock .big{font-size:38px;font-weight:700;font-variant-numeric:tabular-nums}
+.lock-foot{margin-top:auto;background:rgba(0,0,0,.2);width:100%;text-align:center;padding:9px 0;font-size:11.5px}
+/* ---------- 协议帧 ---------- */
+.frame{display:flex;flex-wrap:wrap;gap:6px;align-items:stretch;margin:14px 0}
+.frame .fld{border-radius:9px;padding:10px 12px;text-align:center;min-width:64px;border:1px solid transparent}
+.frame .fld b{display:block;font-size:13px}
+.frame .fld span{display:block;font-size:10.5px;opacity:.85;margin-top:2px;white-space:nowrap}
+.f-magic{background:#123a63;color:#cfe3f7;border-color:#2a5a8f}
+.f-ver{background:#e6f1fb;color:#185fa5;border-color:#b5d4f4}
+.f-type{background:#e1f5ee;color:#0f6e56;border-color:#9fe1cb}
+.f-seq{background:#e1f5ee;color:#0f6e56;border-color:#9fe1cb}
+.f-len{background:#e1f5ee;color:#0f6e56;border-color:#9fe1cb}
+.f-payload{background:#fff4e0;color:#8a5a00;border-color:#e8d3a8;flex:1;min-width:140px}
+.f-crc{background:#fbeceb;color:#a72b22;border-color:#efc2be}
+.f-hmac{background:#f3e8fb;color:#6b3fa0;border-color:#d9c2ee}
+/* ---------- 里程碑 ---------- */
+.tl{position:relative;margin-left:10px;padding-left:26px;border-left:2px solid var(--blue-100)}
+.tl .it{position:relative;padding:10px 0 16px}
+.tl .it::before{content:"";position:absolute;left:-33px;top:16px;width:12px;height:12px;border-radius:50%;background:#fff;border:3px solid var(--blue)}
+.tl .it b{font-size:14.5px}
+.tl .it .day{color:var(--blue);font-size:12.5px;font-weight:600;margin-right:8px}
+.tl .it p{font-size:13px;color:var(--mut);margin-top:3px}
+.tl .it .out{font-size:12.5px;color:var(--teal);margin-top:3px}
+/* ---------- 架构图 ---------- */
+.arch{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px;overflow-x:auto}
+footer{margin-top:56px;border-top:1px solid var(--line);padding:26px 0 60px;color:var(--faint);font-size:13px}
+footer .src{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px;margin-top:10px}
+@media(max-width:700px){footer .src{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <span class="brand">双核智能门禁</span>
+  <a href="#idea">整体思路</a><a href="#arch">系统结构</a><a href="#ui">LVGL 界面</a>
+  <a href="#tree">目录框架</a><a href="#proto">协议</a><a href="#plan">里程碑</a><a href="#risk">风险</a>
+</div></nav>
+
+<header><div class="wrap">
+  <h1>双核智能门禁系统</h1>
+  <p class="sub">ESP32-S3 负责「看与说」——摄像头人脸识别、屏幕交互、云端上报；GD32F303ZE 负责「做与守」——协议校验、继电器开锁、密码备用、看门狗与掉电日志。两板经一根 UART 组成异构双核门禁终端，两周内交付可演示、可量化、可写进简历的完整闭环。</p>
+  <div class="chips">
+    <span class="chip">端侧人脸识别（离线）</span><span class="chip">动作挑战活体</span>
+    <span class="chip">UART 二进制帧协议</span><span class="chip">MQTT 只上不下</span>
+    <span class="chip">LVGL 9.5 中文 UI</span><span class="chip">独立看门狗</span>
+  </div>
+  <div class="meta">
+    <span>视觉主控 <b>ESP32-S3-WROOM N16R8</b></span>
+    <span>执行主控 <b>GD32F303ZET6（120MHz M4F）</b></span>
+    <span>链路 <b>UART1 115200 · IO10/11 ↔ PA2/PA3</b></span>
+    <span>工期 <b>14 天</b></span>
+  </div>
+</div></header>
+
+<!-- ================= 整体思路 ================= -->
+<section id="idea"><div class="wrap">
+  <h2><span class="no">01</span>整体思路</h2>
+  <p class="lead">判决与执行分离：ESP32 是「大脑」（判决），GD32 是「手 + 保险丝」（执行与否决）。两板互不信任、只认协议帧——这条边界本身就是本方案的安全叙事。</p>
+
+  <div class="grid g2">
+    <div class="card">
+      <span class="tag b">ESP32-S3 · 看 · 说 · 想</span>
+      <p class="kname">感知 / 交互 / 云</p>
+      <ul class="clean kdesc">
+        <li>GC0308 采集 + 人脸检测（MSR+MNP，40ms/帧）+ 识别（mfn_s8，512 维 embedding）</li>
+        <li>动作挑战活体：随机提示转头/靠近，用连续帧人脸框位移判定，防静态照片</li>
+        <li>LVGL 界面 + 触摸轮询（FT6336，写 G_MODE=0 释放 IO10）</li>
+        <li>MQTT 上行上报 EMQX + Web 看板（<b>只上不下，不订阅任何开锁主题</b>）</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag t">GD32F303ZE · 动 · 守 · 查</span>
+      <p class="kname">执行 / 守护 / 备用认证</p>
+      <ul class="clean kdesc">
+        <li>帧解析 + CRC16 + HMAC 校验 + 时间戳/nonce 新鲜度 → 门禁状态机</li>
+        <li>继电器开锁 2s + 超时强制断开；蜂鸣器 / LED 本地反馈</li>
+        <li>KEY1–4 四位密码（板载按键）作为人脸失败降级路径</li>
+        <li>独立看门狗守护 + AT24C02 环形日志（掉电不丢，最近 64 条 × 4B）</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>为什么这么分 —— 三条硬理由</h3>
+  <div class="grid g3">
+    <div class="card"><span class="tag b">算力</span>
+      <p class="kname">推理只能跑在 S3 上</p>
+      <p class="kdesc">240MHz 双核 + 8MB Octal PSRAM + esp-dl；GD32 的 120MHz M4F 做不动神经网络推理。感知必须归 ESP32。</p></div>
+    <div class="card"><span class="tag b">引脚账</span>
+      <p class="kname">GPIO 被吃光，只剩 IO10/IO11</p>
+      <p class="kdesc">摄像头占 12 脚（PWDN 在扩展器上）+ LCD 4 脚 + SD/I2C，执行侧要的继电器、按键、蜂鸣器无脚可接；GD32 有 6 个空闲脚 + 板载外设，天然匹配。</p></div>
+    <div class="card"><span class="tag t">可靠性分离</span>
+      <p class="kname">锁的正确性不押在最复杂的板子上</p>
+      <p class="kdesc">ESP32 死机 / OTA 重启 / WiFi 崩溃时，GD32 裸机状态机 + 独立看门狗保证锁处于安全状态、日志照写。执行侧越简单越可靠，所以刻意不开 RTOS。</p></div>
+  </div>
+
+  <h3>一次完整开锁的数据流</h3>
+  <div class="flow">
+    <div class="step"><b>① 刷脸</b><span>摄像头 20fps → 检测稳定 3 帧 → 识别 + 活体挑战</span></div>
+    <div class="step"><b>② 判决</b><span>ESP32 face_engine 给出 face_id + similarity + liveness</span></div>
+    <div class="step"><b>③ 请求</b><span>UART 发 UNLOCK_REQ（时间戳 + nonce + HMAC）</span></div>
+    <div class="step"><b>④ 校验</b><span>GD32 验帧 + 验签 + 新鲜度（±5s），任一不过即拒绝</span></div>
+    <div class="step"><b>⑤ 执行</b><span>继电器吸合 2s → 回 ACK → 双方记日志，ESP32 发 MQTT</span></div>
+  </div>
+
+  <div class="note">
+    <b>评审修正已并入本方案（P0）：</b>帧尾新增 <b>4 字节 HMAC</b>（防伪造，不只是防重放）；心跳帧携带 <b>epoch 时间同步</b>（GD32 无绝对时间来源）；<b>锁型与失效语义</b>必须二选一写死——磁力锁断电开（消防优先）或电插锁断电锁死（安防优先），状态机每个异常分支都要落这个语义。
+  </div>
+
+  <h3>性能预算</h3>
+  <div class="card">
+  <table>
+    <tr><th>指标</th><th>预算</th><th>说明</th></tr>
+    <tr><td>人脸检测</td><td><code>40ms/帧</code></td><td>MSR 32.5ms + MNP 5.9ms ≈ 15fps，核 1</td></tr>
+    <tr><td>人脸识别</td><td><code>100–200ms</code></td><td>仅在检测稳定 3 帧后触发一次（待实测标定阈值）</td></tr>
+    <tr><td>端到端开锁</td><td><code>&lt; 1.2s</code></td><td>稳定确认 200ms + 识别 150ms + 协议 20ms + 继电器 10ms</td></tr>
+    <tr><td>内存</td><td><code>模型 ~1MB Flash + 帧缓冲 600KB PSRAM</code></td><td>QVGA RGB565 × 4 帧，8MB PSRAM 充裕</td></tr>
+    <tr><td>CPU</td><td><code>核1 ~45% · 核0 ~25%</code></td><td>视觉全程核 1，UI 与网络核 0，互不阻塞</td></tr>
+  </table>
+  </div>
+</div></section>
+
+<!-- ================= 系统结构 ================= -->
+<section id="arch"><div class="wrap">
+  <h2><span class="no">02</span>系统结构</h2>
+  <p class="lead">两板各跑各的固件，唯一的耦合点是 UART 帧协议。ESP32 侧五任务双核分工，GD32 侧裸机主循环。</p>
+
+  <div class="arch">
+  <svg viewBox="0 0 960 470" width="100%" xmlns="http://www.w3.org/2000/svg" role="img">
+    <title>双板门禁系统架构</title>
+    <defs>
+      <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+        <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </marker>
+    </defs>
+    <style>
+      .t{font:500 14px "PingFang SC","Microsoft YaHei",sans-serif;fill:#1c2330}
+      .ts{font:400 12px "PingFang SC","Microsoft YaHei",sans-serif;fill:#5c6675}
+      .th{font:600 13px "PingFang SC","Microsoft YaHei",sans-serif}
+      .n{fill:#ffffff;stroke:#93a3b5;stroke-width:.6}
+    </style>
+
+    <!-- ESP32 容器 -->
+    <rect x="30" y="40" width="360" height="300" rx="18" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.8"/>
+    <text class="th" x="210" y="62" text-anchor="middle" fill="#123a63" font-size="14">ESP32-S3 · 感知 / 交互 / 云</text>
+    <!-- 摄像头 -->
+    <rect class="n" x="52" y="84" width="130" height="52" rx="9"/>
+    <text class="t" x="117" y="103" text-anchor="middle" font-size="13">GC0308 摄像头</text>
+    <text class="ts" x="117" y="121" text-anchor="middle">QVGA RGB565 ×4 PSRAM</text>
+    <!-- 人脸引擎 -->
+    <rect class="n" x="52" y="160" width="130" height="66" rx="9"/>
+    <text class="t" x="117" y="180" text-anchor="middle" font-size="13">人脸引擎</text>
+    <text class="ts" x="117" y="197" text-anchor="middle">检测 MSR+MNP 40ms</text>
+    <text class="ts" x="117" y="213" text-anchor="middle">识别 mfn_s8 + 动作挑战</text>
+    <!-- LVGL -->
+    <rect class="n" x="222" y="84" width="146" height="52" rx="9"/>
+    <text class="t" x="295" y="103" text-anchor="middle" font-size="13">LVGL 9.5 UI</text>
+    <text class="ts" x="295" y="121" text-anchor="middle">ST7796 320×480 · 触摸轮询</text>
+    <!-- link -->
+    <rect class="n" x="222" y="160" width="146" height="66" rx="9"/>
+    <text class="t" x="295" y="180" text-anchor="middle" font-size="13">link_task 链路</text>
+    <text class="ts" x="295" y="197" text-anchor="middle">帧编解码 · ACK/重传</text>
+    <text class="ts" x="295" y="213" text-anchor="middle">心跳(带 epoch) · HMAC</text>
+    <!-- net -->
+    <rect class="n" x="52" y="252" width="316" height="46" rx="9"/>
+    <text class="t" x="210" y="270" text-anchor="middle" font-size="13">net_task · MQTT 上行（只发不收）</text>
+    <text class="ts" x="210" y="288" text-anchor="middle">gate/evt/*：通行 / 拒绝 / 撬动告警</text>
+    <!-- 内部箭头 -->
+    <path d="M117,136 V160" fill="none" stroke="#185FA5" stroke-width="1.6" marker-end="url(#ar)"/>
+    <path d="M182,193 H222" fill="none" stroke="#185FA5" stroke-width="1.6" marker-end="url(#ar)"/>
+    <path d="M295,136 V160" fill="none" stroke="#185FA5" stroke-width="1.6" marker-end="url(#ar)"/>
+    <path d="M210,226 V252" fill="none" stroke="#185FA5" stroke-width="1.6" marker-end="url(#ar)"/>
+    <text class="ts" x="210" y="330" text-anchor="middle" fill="#3d6ea5">核 1：视觉推理　·　核 0：UI / 链路 / 网络</text>
+
+    <!-- UART -->
+    <path d="M390,180 H520" fill="none" stroke="#B26A00" stroke-width="2.2" marker-end="url(#ar)" marker-start="url(#ar)"/>
+    <text class="th" x="455" y="164" text-anchor="middle" fill="#8a5a00" font-size="13">UART1 115200</text>
+    <text class="ts" x="455" y="200" text-anchor="middle">IO10(TX)/IO11(RX) ↔ PA3(RX)/PA2(TX)</text>
+    <text class="ts" x="455" y="217" text-anchor="middle">GND 共地 · 12V 锁独立供电</text>
+
+    <!-- GD32 容器 -->
+    <rect x="520" y="40" width="360" height="300" rx="18" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.8"/>
+    <text class="th" x="700" y="62" text-anchor="middle" fill="#0b4a3a" font-size="14">GD32F303ZE · 执行 / 守护（裸机）</text>
+    <!-- 解析 -->
+    <rect class="n" x="542" y="84" width="150" height="66" rx="9"/>
+    <text class="t" x="617" y="104" text-anchor="middle" font-size="13">帧解析</text>
+    <text class="ts" x="617" y="121" text-anchor="middle">CRC16 + HMAC 校验</text>
+    <text class="ts" x="617" y="137" text-anchor="middle">时间戳/nonce 新鲜度</text>
+    <!-- FSM -->
+    <rect class="n" x="712" y="84" width="146" height="66" rx="9"/>
+    <text class="t" x="785" y="104" text-anchor="middle" font-size="13">门禁状态机</text>
+    <text class="ts" x="785" y="121" text-anchor="middle">空闲/校验/开锁/拒绝/锁定</text>
+    <text class="ts" x="785" y="137" text-anchor="middle">1ms SysTick 时基</text>
+    <!-- 执行 -->
+    <rect class="n" x="542" y="176" width="316" height="56" rx="9"/>
+    <text class="t" x="700" y="196" text-anchor="middle" font-size="13">执行与反馈</text>
+    <text class="ts" x="700" y="214" text-anchor="middle">继电器 PC0（2s 超时断开）· 蜂鸣器 PB8 · LED1-3</text>
+    <!-- key -->
+    <rect class="n" x="542" y="258" width="150" height="46" rx="9"/>
+    <text class="t" x="617" y="276" text-anchor="middle" font-size="13">KEY1-4 密码</text>
+    <text class="ts" x="617" y="293" text-anchor="middle">PA0/PG13/PG14/PG15</text>
+    <!-- wdg+eeprom -->
+    <rect class="n" x="712" y="258" width="146" height="46" rx="9"/>
+    <text class="t" x="785" y="276" text-anchor="middle" font-size="13">看门狗 + AT24C02</text>
+    <text class="ts" x="785" y="293" text-anchor="middle">独立守护 · 掉电日志 64 条</text>
+    <path d="M617,150 V176" fill="none" stroke="#0F6E56" stroke-width="1.6" marker-end="url(#ar)"/>
+    <path d="M785,150 V176" fill="none" stroke="#0F6E56" stroke-width="1.6" marker-end="url(#ar)"/>
+    <path d="M617,232 V258" fill="none" stroke="#0F6E56" stroke-width="1.6" marker-end="url(#ar)"/>
+    <path d="M692,281 H712" fill="none" stroke="#0F6E56" stroke-width="1.6" marker-end="url(#ar)"/>
+
+    <!-- 云 -->
+    <rect x="700" y="14" width="240" height="0" fill="none"/>
+    <rect x="660" y="392" width="220" height="52" rx="10" fill="#F1EFE8" stroke="#888780" stroke-width=".7" stroke-dasharray="5 3"/>
+    <text class="t" x="770" y="412" text-anchor="middle" font-size="13">EMQX + Web 看板</text>
+    <text class="ts" x="770" y="430" text-anchor="middle">仅上行 · 不订阅开锁主题</text>
+    <path d="M420,275 C520,320 600,380 700,404" fill="none" stroke="#888780" stroke-width="1.4" stroke-dasharray="5 3" marker-end="url(#ar)"/>
+    <text class="ts" x="560" y="352" fill="#888780">WiFi 上行</text>
+
+    <!-- 锁 -->
+    <rect x="330" y="392" width="180" height="52" rx="10" fill="#FFFFFF" stroke="#3B6D11" stroke-width=".9"/>
+    <text class="t" x="420" y="412" text-anchor="middle" font-size="13">12V 电磁锁 + 续流二极管</text>
+    <text class="ts" x="420" y="430" text-anchor="middle">失效语义待定：断电开 / 断电锁</text>
+    <path d="M700,232 C640,300 520,380 470,398" fill="none" stroke="#3B6D11" stroke-width="1.6" marker-end="url(#ar)"/>
+    <text class="ts" x="596" y="330" fill="#3B6D11">继电器输出</text>
+  </svg>
+  </div>
+
+  <div class="grid g2">
+    <div class="card">
+      <h3 style="margin-top:0">ESP32 侧任务（xTaskCreatePinnedToCore）</h3>
+      <table>
+        <tr><th>任务</th><th>核</th><th>优先级</th><th>频率</th></tr>
+        <tr><td><code>camera_task</code></td><td>1</td><td>5</td><td>20fps 采集</td></tr>
+        <tr><td><code>face_task</code></td><td>1</td><td>4</td><td>检测 15fps · 稳定后触发识别</td></tr>
+        <tr><td><code>link_task</code></td><td>0</td><td>4</td><td>事件驱动（UART 事件队列）</td></tr>
+        <tr><td><code>ui_task</code></td><td>0</td><td>3</td><td>LVGL 30fps（预览用 lv_canvas 拷贝）</td></tr>
+        <tr><td><code>net_task</code></td><td>0</td><td>2</td><td>事件驱动（MQTT 上报）</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">GD32 侧主循环（裸机）</h3>
+      <ul class="clean kdesc">
+        <li><b>USART1 RX 中断</b> → 环形缓冲，主循环逐字节解析状态机（找帧头 → 收满 → 验 CRC/HMAC）</li>
+        <li><b>1ms SysTick</b> 时基：开锁 2s 计时、锁定 60s 倒计时、心跳超时（1s × 3 次丢 → 链路故障灯）</li>
+        <li><b>独立看门狗 FWDGT</b> 喂狗点：主循环 + 收帧后，卡死自动复位，锁侧保持安全态</li>
+        <li><b>AT24C02（I2C0）</b>：环形日志 64 条 × 4B（user_id + 事件 + 时间偏移），写前读尾指针</li>
+        <li>发送侧同样带 ACK/重传（100ms 超时 × 3），与 ESP32 对等</li>
+      </ul>
+    </div>
+  </div>
+</div></section>
+
+<!-- ================= LVGL 界面 ================= -->
+<section id="ui"><div class="wrap">
+  <h2><span class="no">03</span>LVGL 界面展示</h2>
+  <p class="lead">ST7796U 3.5 寸 320×480 竖屏（BGR 色序 + IPS 反显），以下 8 个界面按状态机驱动切换，比例 2:3 还原。预览帧由 camera_task 经双缓冲拷贝进 LVGL canvas，UI 永不阻塞视觉链路。</p>
+
+  <div class="screens">
+
+    <div class="scr-item">
+      <div class="bezel"><div class="screen s-standby">
+        <div class="sbar"><span>12:30</span><span>▤ ▮</span></div>
+        <div class="ghostface"></div>
+        <div class="st-hint"><span class="st-led"></span>请面向屏幕</div>
+      </div></div>
+      <div class="scap"><b>① 待机 · 摄像头预览</b><span>lv_canvas 20fps 拷贝刷新 · 触摸 5s 无操作进入<br>呼吸 LED = 系统正常（IO10 绿灯）</span></div>
+    </div>
+
+    <div class="scr-item">
+      <div class="bezel"><div class="screen s-scan">
+        <div class="sbar"><span>12:30</span><span>▤ ▮</span></div>
+        <div class="facebox"><i class="fb tl"></i><i class="fb tr"></i><i class="fb bl"></i><i class="fb br"></i></div>
+        <div class="scan-st">识别中<span class="dotanim">...</span></div>
+      </div></div>
+      <div class="scap"><b>② 识别中 · 人脸框</b><span>四角括号 = 4 条 lv_line 叠加 canvas<br>检测稳定 3 帧才触发一次识别（省算力）</span></div>
+    </div>
+
+    <div class="scr-item">
+      <div class="bezel"><div class="screen s-live">
+        <div class="sbar"><span>12:30</span><span>▤ ▮</span></div>
+        <div class="live-tip">请向左转头</div>
+        <div class="live-arr">◀</div>
+        <div class="facebox"><i class="fb tl"></i><i class="fb tr"></i><i class="fb bl"></i><i class="fb br"></i></div>
+        <div class="live-bar"><i></i></div>
+      </div></div>
+      <div class="scap"><b>③ 活体挑战 · 动作提示</b><span>lv_label 大字 + lv_bar 2s 倒计时<br>判定 = 框中心 X 位移 / 框宽变化，超时判失败</span></div>
+    </div>
+
+    <div class="scr-item">
+      <div class="bezel"><div class="screen s-ok">
+        <div><div class="ok-ic">✓</div>
+        <div class="ok-name">张 三</div>
+        <div class="ok-sub">工号 07 · 活体通过</div></div>
+        <div class="ok-foot">门已开 · 2s 后自动落锁</div>
+      </div></div>
+      <div class="scap"><b>④ 通行成功</b><span>整屏背景色切换 + lv_label<br>GD32 侧同步：继电器吸合 + 蜂鸣器短鸣 + 绿灯</span></div>
+    </div>
+
+    <div class="scr-item">
+      <div class="bezel"><div class="screen s-no">
+        <div><div class="no-ic">✕</div>
+        <div class="ok-name" style="font-size:20px">拒绝通行</div>
+        <div class="no-reason"><i class="on">陌生人</i><i>活体失败</i></div>
+        <div class="ok-sub">已记录并上报 · 剩余尝试 2 次</div></div>
+        <div class="no-foot">连续失败 5 次将锁定 60s</div>
+      </div></div>
+      <div class="scap"><b>⑤ 通行拒绝</b><span>失败原因 chip 标签 + fail_count 实时显示<br>写 NVS 不清零，重启继续计数</span></div>
+    </div>
+
+    <div class="scr-item">
+      <div class="bezel"><div class="screen s-menu">
+        <div class="m-head"><span>管理员菜单</span><span>≡</span></div>
+        <div class="m-item"><span class="ic">＋</span>录入人脸<span class="arr">›</span></div>
+        <div class="m-item"><span class="ic">－</span>删除成员<span class="arr">›</span></div>
+        <div class="m-item"><span class="ic">≡</span>查看通行记录<span class="arr">›</span></div>
+        <div class="m-item"><span class="ic">⚙</span>阈值与锁定设置<span class="arr">›</span></div>
+        <div class="m-foot">door_access v1.0 · 32 人容量</div>
+      </div></div>
+      <div class="scap"><b>⑥ 管理员菜单</b><span>lv_list + 长按进入（管理员密码验证）<br>录入/删除直接操作 NVS 人脸库 face_00~31</span></div>
+    </div>
+
+    <div class="scr-item">
+      <div class="bezel"><div class="screen s-enroll">
+        <div class="m-head"><span>录入人脸</span><span>2/3</span></div>
+        <div class="e-stage">
+          <div class="facebox"><i class="fb tl"></i><i class="fb tr"></i><i class="fb bl"></i><i class="fb br"></i></div>
+        </div>
+        <div class="e-tip">保持正对，缓慢左右转头</div>
+        <div class="e-bar"><i></i></div>
+        <div class="e-sub">采集第 2/3 帧 · embedding 取均值后写入 NVS</div>
+      </div></div>
+      <div class="scap"><b>⑦ 录入进度</b><span>lv_bar 进度 + 帧计数<br>3 帧 embedding 均值 → face_XX（512B int8）</span></div>
+    </div>
+
+    <div class="scr-item">
+      <div class="bezel"><div class="screen s-lock">
+        <div><div style="font-size:40px">🔒</div>
+        <div class="ok-name" style="font-size:20px;margin-top:10px">尝试次数过多</div>
+        <div class="big" style="margin-top:12px">58s</div>
+        <div class="ok-sub">期间拒绝一切认证请求</div></div>
+        <div class="lock-foot">请联系管理员或稍后再试</div>
+      </div></div>
+      <div class="scap"><b>⑧ 锁定中</b><span>lv_timer 每秒刷新倒计时<br>对应 GD32 侧 DOOR_LOCKOUT 状态同步显示</span></div>
+    </div>
+
+  </div>
+
+  <div class="note t">
+    <b>界面切换驱动：</b>所有界面由 face_engine 结果 + link_task 状态机事件驱动，ui_task 只消费不决策。中文字库复用已有 <code>lv_font_siyuanbold_jibenhanzi_16.c</code>（16px），标题加粗用同字号渲染即可，不再引入 24px 字库省 Flash。
+  </div>
+</div></section>
+
+<!-- ================= 目录框架 ================= -->
+<section id="tree"><div class="wrap">
+  <h2><span class="no">04</span>目录框架</h2>
+  <p class="lead">两端各自独立成工程、独立编译烧录，唯一的共享物是协议定义（link_proto 两板同源，PC 模拟器第三份实现用于无板测试）。每个组件都能单独回到对应章节工程调试。</p>
+
+  <div class="grid g2">
+    <div>
+      <h3 style="margin-top:0"><span class="tag b">ESP32 端</span> /home/dcz/esp32-s3/projects/door_access/</h3>
+<pre><span class="d">door_access/</span>
+├── CMakeLists.txt
+├── sdkconfig.defaults        <span class="c"># Octal 8MB PSRAM · 16MB 分区表 · 栈 16KB</span>
+├── partitions.csv            <span class="c"># 含 human_face_* 模型分区</span>
+├── main/
+│   ├── idf_component.yml     <span class="h"># esp-dl 3.3.14 · face_detect 0.5.2 · face_recognition</span>
+│   │                         <span class="c">#   esp32-camera · lvgl 9.5.0(钉死) · esp_lcd_st7796</span>
+│   ├── main.c                <span class="c"># 初始化顺序 · 任务创建 · 全局状态</span>
+│   ├── app_config.h          <span class="c"># 引脚/阈值/优先级集中定义</span>
+│   ├── <span class="d">link/</span>
+│   │   ├── link_proto.h/.c   <span class="h"># 帧编解码 · CRC16 · HMAC · seq（与 GD32 同源）</span>
+│   │   └── link_task.c       <span class="c"># UART 驱动 · ACK/重传 · 心跳带 epoch</span>
+│   ├── <span class="d">vision/</span>
+│   │   ├── face_engine.h/.c  <span class="c"># 检测+识别+动作挑战+稳定帧确认</span>
+│   │   └── face_db.h/.c      <span class="c"># NVS 人脸库增删查（face_00~31 × 512B）</span>
+│   ├── <span class="d">ui/</span>
+│   │   ├── ui_main.h/.c      <span class="c"># 八个界面 + 状态切换</span>
+│   │   └── ui_preview.c      <span class="c"># 摄像头帧 → LVGL canvas</span>
+│   └── <span class="d">net/</span>
+│       └── mqtt_report.h/.c  <span class="c"># 只发不收，不符任何开锁主题</span>
+└── <span class="d">components/bsp/</span>           <span class="c"># 以 07 章为基线重建（不用 esp_http_stream 的 BSP）</span>
+    ├── bsp_lcd / bsp_lvgl    <span class="c"># ST7796 + SPI3 DMA · LVGL 双缓冲 + 递归锁</span>
+    ├── bsp_touch             <span class="h"># FT6336 轮询 + G_MODE=0 释放 IO10 INT</span>
+    ├── bsp_i2cbus / bsp_pca9557  <span class="c"># 共享总线 · 仅操作 IO0，禁止触碰 IO2(PWDN)</span>
+    └── bsp_camera            <span class="c"># GC0308 · 4 帧 PSRAM 缓冲（XCLK 必须 24MHz）</span></pre>
+    </div>
+
+    <div>
+      <h3 style="margin-top:0"><span class="tag t">GD32 端</span> /home/dcz/GD32F303_1012/18-door-access/</h3>
+<pre><span class="d">18-door-access/</span>
+├── <span class="d">App/</span>
+│   ├── main.c                <span class="c"># 初始化 + 主循环（沿用章节模板）</span>
+│   ├── door_fsm.c/.h         <span class="h"># 状态机：空闲/校验/开锁/拒绝/锁定</span>
+│   ├── link_proto.c/.h       <span class="h"># 与 ESP32 同源协议实现</span>
+│   ├── relay.c/.h            <span class="c"># PC0 · 开锁 2s · 超时强制断开</span>
+│   ├── keypad.c/.h           <span class="c"># KEY1-4 密码（长按确认/清空）</span>
+│   ├── buzzer_led.c/.h       <span class="c"># PB8 蜂鸣器 + LED 状态（复用 03 章）</span>
+│   └── log_store.c/.h        <span class="c"># AT24C02 环形日志 64 条（复用 13 章）</span>
+├── <span class="d">Driver/</span>                   <span class="c"># 沿用模板，新增 usart1 中断 + 环形缓冲</span>
+├── Arm/  GD32F30x_SPL/  target/  openocd/
+└── 18-door-access.code-workspace
+
+<span class="c"># 复用章节：03 按键蜂鸣器 · 07 串口 · 10 看门狗</span>
+<span class="c">#           13 AT24C02 · 09 RS485 帧套路</span>
+
+<span class="d">door_access/tools/</span>          <span class="c"># PC 侧工具（无板也能测）</span>
+├── proto_sim.py             <span class="h"># 协议模拟器：直连 GD32 串口发帧</span>
+├── bench_metrics.py         <span class="c"># 抓时延/成功率 → 指标表</span>
+└── dashboard/index.html     <span class="c"># WebSocket 看板（记录 + 统计）</span>
+
+<span class="d">door_access/docs/</span>
+├── wiring.md  protocol.md  bom.md  test_report.md</pre>
+    </div>
+  </div>
+</div></section>
+
+<!-- ================= 协议 ================= -->
+<section id="proto"><div class="wrap">
+  <h2><span class="no">05</span>双板协议（两板逐字节一致）</h2>
+  <p class="lead">小端 · CRC-16/MODBUS 覆盖 ver..payload · 发送侧待确认队列深度 8 + 100ms 超时 × 3 重传 · 接收侧 seq 窗口去重 · 心跳 1s（携带 epoch 供 GD32 同步时间）。</p>
+
+  <div class="card">
+    <div class="frame">
+      <div class="fld f-magic"><b>AA 55</b><span>magic 2B</span></div>
+      <div class="fld f-ver"><b>01</b><span>ver 1B</span></div>
+      <div class="fld f-type"><b>type</b><span>1B</span></div>
+      <div class="fld f-seq"><b>seq</b><span>1B</span></div>
+      <div class="fld f-len"><b>len</b><span>1B ≤64</span></div>
+      <div class="fld f-payload"><b>payload</b><span>0–64B（UNLOCK_REQ：timestamp4 + nonce4 + reason1）</span></div>
+      <div class="fld f-crc"><b>CRC16</b><span>2B MODBUS</span></div>
+      <div class="fld f-hmac"><b>HMAC32</b><span>4B 截断（评审新增）</span></div>
+    </div>
+    <table>
+      <tr><th>type</th><th>命令</th><th>方向</th><th>payload 摘要</th></tr>
+      <tr><td><code>1</code></td><td>心跳 HEARTBEAT</td><td>双向</td><td>epoch(uint32) + 状态位</td></tr>
+      <tr><td><code>2</code></td><td>ACK</td><td>双向</td><td>被确认帧的 seq</td></tr>
+      <tr><td><code>3</code></td><td>开锁请求 UNLOCK_REQ</td><td>ESP32 → GD32</td><td>时间戳 + nonce + 原因（人脸/密码/管理）</td></tr>
+      <tr><td><code>4</code></td><td>开锁应答 UNLOCK_ACK</td><td>GD32 → ESP32</td><td>结果（成功/拒绝/防重放拒绝）+ 剩余尝试</td></tr>
+      <tr><td><code>5</code></td><td>按键事件 KEY_EVT</td><td>GD32 → ESP32</td><td>键值 + 按下/释放（UI 同步显示 * 号）</td></tr>
+      <tr><td><code>6</code></td><td>状态查询 STATE</td><td>双向</td><td>门状态 / 锁定剩余 / 日志水位</td></tr>
+    </table>
+    <div class="note a" style="margin-bottom:0">
+      <b>新鲜度校验（P0-2 已修）：</b>GD32 无绝对时间，本地时间基准来自心跳帧的 epoch，每次心跳同步一次；校验 <code>|now − timestamp| &lt; 5s</code> 且 nonce 未用过（内存保留最近 16 个 nonce）。<b>HMAC 密钥</b>编译期烧入两板（同一 32 字节常量），没有它任何人都能伪造"新鲜"帧——CRC 只保完整性，不保真实性。
+    </div>
+  </div>
+</div></section>
+
+<!-- ================= 里程碑 ================= -->
+<section id="plan"><div class="wrap">
+  <h2><span class="no">06</span>两周里程碑</h2>
+  <p class="lead">每天结束都有"现象"可验收；砍法预先定死——MQTT/看板/活体是加分项，人脸 + 协议 + 开锁 + UI 是 MVP 底线，D12 起只修不改。</p>
+  <div class="card">
+    <div class="tl">
+      <div class="it"><span class="day">D1–2</span><b>ESP32 工程与 BSP 基线</b>
+        <p>以 07 章为基线重建 BSP：ST7796 + LVGL 双缓冲 + 触摸轮询（G_MODE=0）+ GC0308 预览；同日冒烟测试 esp-dl × IDF 6.0.3 兼容性</p>
+        <p class="out">✓ 屏上实时预览 + 四界面框架 · 冒烟结果决定是否走降级路线</p></div>
+      <div class="it"><span class="day">D3–4</span><b>协议库 + PC 模拟器</b>
+        <p>link_proto 三份同源实现（ESP32 / GD32 / Python）+ proto_sim.py；CRC/HMAC/ACK/重传/去重全部单测</p>
+        <p class="out">✓ PC ↔ PC 对拷帧统计全绿（错误帧 0 · 重传符合预期）</p></div>
+      <div class="it"><span class="day">D5–7</span><b>GD32 固件</b>
+        <p>协议解析、door_fsm、继电器、KEY1-4 密码、蜂鸣器 LED、独立看门狗、AT24C02 日志</p>
+        <p class="out">✓ proto_sim 模拟开锁全流程 · 拔掉 ESP32 后看门狗/锁定行为正确</p></div>
+      <div class="it"><span class="day">D8–9</span><b>人脸检测 + 识别 + 人脸库</b>
+        <p>MSR+MNP 检测 → mfn_s8 识别 → NVS 库录入/删除/匹配；录 20 人跑正/负样本距离分布，标定阈值写进 test_report</p>
+        <p class="out">✓ 屏上人脸框 + 识别姓名显示 · 阈值有数据支撑</p></div>
+      <div class="it"><span class="day">D10</span><b>端到端联调</b>
+        <p>识别 → 开锁全链路；加动作挑战活体与时间戳 nonce 防重放；IO10 共存验证（摸屏不乱码）</p>
+        <p class="out">✓ 端到端 &lt; 1.2s 实测 · 重放帧被拒（DENIED_REPLAY）</p></div>
+      <div class="it"><span class="day">D11</span><b>MQTT 上报 + 看板</b>
+        <p>EMQX + WebSocket 看板；bench_metrics.py 采集时延/成功率/重传率作为量化指标</p>
+        <p class="out">✓ 看板实时刷通行记录 · 指标表生成</p></div>
+      <div class="it"><span class="day">D12–13</span><b>交付物</b>
+        <p>接线表、协议文档、BOM 成本、测试报告、简历文案；12V 锁干扰整改（续流 + RC 吸收 + 电源分离）</p>
+        <p class="out">✓ docs/ 四件套齐 · 断电/看门狗复位行为与文档一致</p></div>
+      <div class="it"><span class="day">D14</span><b>机动 + 演示彩排</b>
+        <p>长稳跑 4h 老化 · 演示脚本走一遍 · 弱光/侧脸边界录屏留证</p>
+        <p class="out">✓ 可对任何人 3 分钟完成完整演示</p></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ================= 风险 ================= -->
+<section id="risk"><div class="wrap">
+  <h2><span class="no">07</span>风险与降级</h2>
+  <p class="lead">每条风险都带触发信号和已定的退路，开工前再看一遍。</p>
+  <div class="card">
+    <table>
+      <tr><th>风险</th><th>信号</th><th>降级方案</th></tr>
+      <tr><td><b>esp-dl 3.3.14 × IDF 6.0.3 不兼容</b><br>概率 中 · 影响 高</td><td>D1 冒烟编译失败</td><td>降级为「人脸检测 + 管理员按键确认」或「人脸 + 密码双因子」；简历改述"人脸检测"，不写"识别"</td></tr>
+      <tr><td><b>识别精度不足</b>（弱光 / 侧脸）<br>概率 中 · 影响 中</td><td>正/负样本距离分布重叠</td><td>采集加到 5 帧取均值；UI 加"请正对屏幕"引导；按分布重标阈值</td></tr>
+      <tr><td><b>IO10 三方冲突</b>（LED6 + TP-INT + UART TX）<br>概率 中 · 影响 中</td><td>摸屏时串口乱码</td><td>FT6336 写 G_MODE=0 释放 INT；仍冲突则最终版拆除 LED6</td></tr>
+      <tr><td><b>12V 锁干扰致 GD32 复位</b><br>概率 中 · 影响 高</td><td>开锁瞬间 GD32 重启</td><td>锁电源与逻辑电源分离 + 续流二极管 + RC 吸收 + 继电器线圈侧 100nF</td></tr>
+      <tr><td><b>UART 无认证被抓包</b><br>概率 低 · 影响 高</td><td>—（威胁模型前置）</td><td>帧尾 HMAC32（已并入协议）+ 壳内布线物理防护；文档明写威胁模型假设</td></tr>
+      <tr><td><b>两周做不完全部</b><br>概率 中 · 影响 中</td><td>D10 联调未通</td><td>砍单固定：先砍看板 → 再砍活体 → 保"人脸+协议+开锁+UI"MVP；GD32 侧砍 EEPROM 日志</td></tr>
+    </table>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <b style="color:#5c6675">资料来源（本页所有结论的出处）</b>
+  <div class="src">
+    <span>· esp32s3_learn/硬件说明.md —— S3 引脚唯一事实来源（IO10 双重占用 / IO11 唯一 ADC / PCA9557 约束）</span>
+    <span>· esp32s3_learn/双板门禁方案评审.md —— P0 修正：HMAC / epoch 同步 / 锁失效语义</span>
+    <span>· esp32s3_learn/双核智能门禁-项目架构.md —— 单板方案对照与任务规划方法论</span>
+    <span>· esp32s3_learn/排错手册.md —— PCA9557 / XCLK 24MHz / 4 帧缓冲等踩坑记录</span>
+    <span>· GD32F303_1012/硬件说明.md + 原理图解析.md —— 麒麟板空闲脚 / KEY1-4 / AT24C02 / USART1</span>
+    <span>· GD32 章节 03/07/10/13/09 —— 按键蜂鸣器 / 串口 / 看门狗 / AT24C02 / 帧通信套路直接复用</span>
+  </div>
+  <p style="margin-top:18px">双核智能门禁系统 · 异构双板方案 · 项目总览 v1.0 — 2026-10</p>
+</div></footer>
+
+</body>
+</html>

@@ -1,0 +1,4 @@
+## IDF Component Manager Manifest File
+## 依赖按模块逐步加入（M1 加 lvgl/st7796，M3 加 esp32-camera，M4 加 esp-dl）
+dependencies:
+  idf: ">=5.0"
