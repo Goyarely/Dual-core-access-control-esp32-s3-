@@ -3,6 +3,7 @@
  *
  * M0：工程骨架（编译 + 启动自检）
  * M1：屏 BSP —— ST7796U 320x480 竖屏 + LVGL 9，中文标题
+ * M2：触摸 BSP —— FT6336 轮询模式（G_MODE=0 释放 IO10）+ 坐标标定
  */
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
@@ -17,82 +18,108 @@
 #include "bsp_pca9557.h"
 #include "bsp_lcd.h"
 #include "bsp_lvgl.h"
+#include "bsp_touch.h"
 #include "lv_fonts.h"
 
 static const char *TAG = "door_access";
 
-/* ---------------- 字库自检 ----------------
- * 用运行时查询代替"看屏幕猜"：能查到字形说明字库表本身没问题，
- * 查不到就是生成的字库和 LVGL 9 的结构不兼容。 */
-static void font_selfcheck(void)
+static lv_obj_t *s_cross = NULL;     /* 跟手准星 */
+static lv_obj_t *s_lbl_xy = NULL;    /* 顶部坐标 */
+static lv_obj_t *s_lbl_hit = NULL;   /* 点中了哪个角 */
+
+/* ---------------- 触摸自检界面 ---------------- */
+static void scr_event_cb(lv_event_t *e)
 {
-    struct {
-        const char *name;
-        const lv_font_t *font;
-        uint32_t cp;
-    } items[] = {
-        {"misans_16 'A'", &lv_font_misans_16, 'A'},
-        {"misans_16 '门'", &lv_font_misans_16, 0x95E8},
-        {"misans_24 '门'", &lv_font_misans_24, 0x95E8},
-        {"default 'A'", LV_FONT_DEFAULT, 'A'},
-    };
-    for (size_t i = 0; i < sizeof(items) / sizeof(items[0]); i++) {
-        lv_font_glyph_dsc_t d = {0};
-        bool ok = lv_font_get_glyph_dsc(items[i].font, &d, items[i].cp, 0);
-        ESP_LOGI(TAG, "font %-16s ok=%d adv=%d box=%dx%d",
-                 items[i].name, ok, d.adv_w, d.box_w, d.box_h);
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_indev_t *indev = lv_event_get_indev(e);
+    lv_point_t p;
+
+    if (indev == NULL) return;
+    lv_indev_get_point(indev, &p);
+
+    if (code == LV_EVENT_PRESSED || code == LV_EVENT_PRESSING) {
+        lv_obj_remove_flag(s_cross, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_pos(s_cross, p.x - 22, p.y - 22);   /* 44x44，中心对准手指 */
+
+        char buf[48];
+        snprintf(buf, sizeof(buf), "x=%d  y=%d", (int)p.x, (int)p.y);
+        lv_label_set_text(s_lbl_xy, buf);
+    } else if (code == LV_EVENT_RELEASED) {
+        lv_obj_add_flag(s_cross, LV_OBJ_FLAG_HIDDEN);
     }
 }
 
-/* ---------------- 启动页 ---------------- */
-static void ui_boot_screen(void)
+static void corner_event_cb(lv_event_t *e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    const char *name = (const char *)lv_event_get_user_data(e);
+    ESP_LOGI(TAG, "corner hit: %s", name);
+    lv_label_set_text(s_lbl_hit, name);
+}
+
+static void ui_touch_test(void)
 {
     lv_obj_t *scr = lv_screen_active();
     lv_obj_set_style_bg_color(scr, lv_color_hex(0x0d131b), 0);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
+    lv_obj_add_flag(scr, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(scr, scr_event_cb, LV_EVENT_ALL, NULL);
 
-    /* 标题：中文能否显示，直接检验字库链接和编码 */
-    lv_obj_t *title = lv_label_create(scr);
-    lv_label_set_text(title, "门禁系统");
-    lv_obj_set_style_text_font(title, &lv_font_misans_24, 0);
-    lv_obj_set_style_text_color(title, lv_color_white(), 0);
-    lv_obj_align(title, LV_ALIGN_CENTER, 0, -48);
+    /* 准星 */
+    s_cross = lv_obj_create(scr);
+    lv_obj_remove_style_all(s_cross);
+    lv_obj_set_size(s_cross, 44, 44);
+    lv_obj_set_style_border_color(s_cross, lv_color_hex(0xffd166), 0);
+    lv_obj_set_style_border_width(s_cross, 2, 0);
+    lv_obj_set_style_radius(s_cross, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_opa(s_cross, LV_OPA_TRANSP, 0);
+    lv_obj_add_flag(s_cross, LV_OBJ_FLAG_HIDDEN);
 
-    lv_obj_t *sub = lv_label_create(scr);
-    lv_label_set_text(sub, "door_access v" APP_VERSION);
-    lv_obj_set_style_text_font(sub, &lv_font_misans_16, 0);
-    lv_obj_set_style_text_color(sub, lv_color_hex(0x7d8ea0), 0);
-    lv_obj_align(sub, LV_ALIGN_CENTER, 0, 0);
+    /* 顶部坐标 */
+    s_lbl_xy = lv_label_create(scr);
+    lv_label_set_text(s_lbl_xy, "TOUCH THE SCREEN");
+    lv_obj_set_style_text_font(s_lbl_xy, &lv_font_misans_16, 0);
+    lv_obj_set_style_text_color(s_lbl_xy, lv_color_hex(0x3ddc78), 0);
+    lv_obj_align(s_lbl_xy, LV_ALIGN_TOP_MID, 0, 8);
 
-    /* 对照组：默认字体的纯 ASCII，用来区分"字库坏了"还是"布局偏了" */
-    lv_obj_t *ascii = lv_label_create(scr);
-    lv_label_set_text(ascii, "DOOR ACCESS M1");
-    lv_obj_set_style_text_color(ascii, lv_color_hex(0xff8a00), 0);
-    lv_obj_align(ascii, LV_ALIGN_CENTER, 0, -96);
+    /* 中间提示 */
+    lv_obj_t *hint = lv_label_create(scr);
+    lv_label_set_text(hint, "点四个角");
+    lv_obj_set_style_text_font(hint, &lv_font_misans_24, 0);
+    lv_obj_set_style_text_color(hint, lv_color_white(), 0);
+    lv_obj_align(hint, LV_ALIGN_CENTER, 0, -40);
 
-    /* 三色条：红绿蓝顺序错 = BGR/字节序问题，一眼看出来 */
-    const uint32_t colors[3] = {0xff0000, 0x00ff00, 0x0000ff};
-    for (int i = 0; i < 3; i++) {
-        lv_obj_t *bar = lv_obj_create(scr);
-        lv_obj_remove_style_all(bar);
-        lv_obj_set_size(bar, 72, 14);
-        lv_obj_set_style_bg_color(bar, lv_color_hex(colors[i]), 0);
-        lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, 0);
-        lv_obj_set_style_radius(bar, 4, 0);
-        lv_obj_align(bar, LV_ALIGN_CENTER, (i - 1) * 84, 56);
-    }
+    s_lbl_hit = lv_label_create(scr);
+    lv_label_set_text(s_lbl_hit, "----");
+    lv_obj_set_style_text_font(s_lbl_hit, &lv_font_misans_16, 0);
+    lv_obj_set_style_text_color(s_lbl_hit, lv_color_hex(0x7d8ea0), 0);
+    lv_obj_align(s_lbl_hit, LV_ALIGN_CENTER, 0, 20);
 
-    /* 四角标记：检查画面有没有偏移/裁切 */
-    for (int i = 0; i < 4; i++) {
-        lv_obj_t *dot = lv_obj_create(scr);
-        lv_obj_remove_style_all(dot);
-        lv_obj_set_size(dot, 10, 10);
-        lv_obj_set_style_bg_color(dot, lv_color_hex(0x3ddc78), 0);
-        lv_obj_set_style_bg_opa(dot, LV_OPA_COVER, 0);
-        lv_obj_set_style_radius(dot, LV_RADIUS_CIRCLE, 0);
-        int x = (i % 2) ? 1 : -1;
-        int y = (i / 2) ? 1 : -1;
-        lv_obj_align(dot, LV_ALIGN_CENTER, x * (LCD_H_RES / 2 - 12), y * (LCD_V_RES / 2 - 12));
+    /* 四角目标框：点中会显示 TL/TR/BL/BR，用来核对坐标映射 */
+    static const struct {
+        const char *name;
+        lv_align_t align;
+        int dx, dy;
+    } corners[] = {
+        {"TL", LV_ALIGN_TOP_LEFT,     6,   6},
+        {"TR", LV_ALIGN_TOP_RIGHT,   -6,   6},
+        {"BL", LV_ALIGN_BOTTOM_LEFT,  6,  -6},
+        {"BR", LV_ALIGN_BOTTOM_RIGHT, -6, -6},
+    };
+    for (size_t i = 0; i < sizeof(corners) / sizeof(corners[0]); i++) {
+        lv_obj_t *box = lv_button_create(scr);
+        lv_obj_set_size(box, 64, 64);
+        lv_obj_align(box, corners[i].align, corners[i].dx, corners[i].dy);
+        lv_obj_set_style_bg_color(box, lv_color_hex(0x185fa5), 0);
+        lv_obj_set_style_bg_opa(box, LV_OPA_COVER, 0);
+        lv_obj_set_style_radius(box, 10, 0);
+        lv_obj_add_event_cb(box, corner_event_cb, LV_EVENT_CLICKED, (void *)corners[i].name);
+
+        lv_obj_t *lbl = lv_label_create(box);
+        lv_label_set_text(lbl, corners[i].name);
+        lv_obj_set_style_text_font(lbl, &lv_font_misans_16, 0);
+        lv_obj_center(lbl);
     }
 }
 
@@ -124,14 +151,14 @@ void app_main(void)
 
     ESP_ERROR_CHECK(bsp_lcd_init());
     ESP_ERROR_CHECK(bsp_lvgl_init());
+    ESP_ERROR_CHECK(bsp_touch_init());
 
     bsp_lvgl_lock();
-    font_selfcheck();
-    ui_boot_screen();
+    ui_touch_test();
     bsp_lvgl_unlock();
 
     bsp_lcd_set_backlight(80);
-    ESP_LOGI(TAG, "M1 boot screen shown, backlight 80%%");
+    ESP_LOGI(TAG, "M2 touch test screen shown");
 
     xTaskCreatePinnedToCore(heartbeat_task, "hb", 3072, NULL, 2, NULL, 0);
 }
