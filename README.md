@@ -17,14 +17,35 @@ GD32F303ZE 负责「做与守」——协议校验、继电器开锁、密码备
 | M3 | 摄像头预览（GC0308 QVGA，旋转 90° 显示） | ✅ | `f46169b` |
 | M4 | 人脸检测（MSRMNP_S8_V1 + 四角括号 + 稳定帧） | ✅ | `e34d754` |
 | M5 | 人脸识别 + 人脸库（MFN_S8_V1） | ✅ | `50db67d` |
-| M6 | UI 八界面状态机 | 待做 | |
-| M7 | 协议库 link_proto + PC 模拟器 | 待做 | |
+| M6 | UI 八界面状态机 + 管理员体系 | ✅ | `0d208f1` `21e68e6` |
+| M7 | 协议库 link_proto + PC 模拟器 | ✅ | 见 git log |
 | M8 | UART 链路任务（心跳 / 开锁请求 / 重传） | 待做 | |
 | M9 | GD32 侧固件（另一个仓库） | 待做 | |
 | M10 | 动作挑战活体 | 待做 | |
 | M11 | 端到端联调 | 待做 | |
 | M12 | MQTT 上报 + 看板 | 待做 | |
 | M13 | 交付文档 + 12V 干扰整改 | 待做 | |
+
+## 协议库与 PC 模拟器（M7）
+
+`components/link/link_proto.{c,h}` 是两板同源的纯 C 协议实现，`tools/link_proto.py`
+是逐字节一致的 Python 镜像。
+
+```bash
+python3 tools/test_proto.py     # 39 项自测：向量/往返/篡改/粘包/去重 + C↔Python 交叉验证
+
+# 无板自测（loop 自环）
+python3 tools/proto_sim.py --port loop:// --role esp32 --send-unlock 2 --duration 2
+
+# 接真板：PC 扮演 GD32，看 ESP32 发的帧
+python3 tools/proto_sim.py --port /dev/ttyUSB0 --role gd32
+```
+
+帧格式：`AA55 | ver | type | seq | len | payload | CRC16 | MAC32`
+- CRC16/MODBUS 覆盖 ver..payload（只保证传输没错）
+- MAC32（SipHash-2-4 折叠）覆盖 ver..CRC（带密钥，防伪造；**替代了总览里的 HMAC-SHA256**，
+  因为 GD32 没有加密库，SipHash 只需要 60 行可移植 C）
+- 时间戳 + nonce 由应用层校验（防重放）
 
 ## 构建与烧录
 
