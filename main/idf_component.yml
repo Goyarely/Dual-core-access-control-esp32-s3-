@@ -6,3 +6,4 @@ dependencies:
   espressif/esp_lvgl_port: "~2.9.0"
   espressif/esp_lcd_st7796: "^1.5.0"
   cfscn/esp_lcd_touch_ft6x36: "^1.0.8"
+  espressif/esp32-camera: "*"

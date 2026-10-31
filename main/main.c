@@ -4,6 +4,7 @@
  * M0：工程骨架（编译 + 启动自检）
  * M1：屏 BSP —— ST7796U 320x480 竖屏 + LVGL 9，中文标题
  * M2：触摸 BSP —— FT6336 轮询模式（G_MODE=0 释放 IO10）+ 坐标标定
+ * M3：摄像头预览 —— GC0308 QVGA → LVGL image 实时刷新
  */
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
@@ -12,6 +13,7 @@
 #include "esp_chip_info.h"
 #include "esp_psram.h"
 #include "esp_heap_caps.h"
+#include "esp_timer.h"
 
 #include "app_config.h"
 #include "bsp_i2c.h"
@@ -19,107 +21,87 @@
 #include "bsp_lcd.h"
 #include "bsp_lvgl.h"
 #include "bsp_touch.h"
+#include "bsp_camera.h"
 #include "lv_fonts.h"
 
 static const char *TAG = "door_access";
 
-static lv_obj_t *s_cross = NULL;     /* 跟手准星 */
-static lv_obj_t *s_lbl_xy = NULL;    /* 顶部坐标 */
-static lv_obj_t *s_lbl_hit = NULL;   /* 点中了哪个角 */
+/* 摄像头出 320x240 横图，旋转 90° 后在竖屏上显示为 240x320 */
+#define PREVIEW_W  240
+#define PREVIEW_H  320
+#define PREVIEW_ROTATE_CW  0   /* 0=逆时针（本板实测正确），1=顺时针 */
 
-/* ---------------- 触摸自检界面 ---------------- */
-static void scr_event_cb(lv_event_t *e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
-    lv_indev_t *indev = lv_event_get_indev(e);
-    lv_point_t p;
+static lv_obj_t *s_img = NULL;
+static lv_image_dsc_t s_img_dsc;
+static uint8_t *s_frame_buf = NULL;     /* LVGL 图像源（小端 RGB565，PSRAM） */
+static lv_obj_t *s_lbl_fps = NULL;
 
-    if (indev == NULL) return;
-    lv_indev_get_point(indev, &p);
-
-    if (code == LV_EVENT_PRESSED || code == LV_EVENT_PRESSING) {
-        lv_obj_remove_flag(s_cross, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_set_pos(s_cross, p.x - 22, p.y - 22);   /* 44x44，中心对准手指 */
-
-        char buf[48];
-        snprintf(buf, sizeof(buf), "x=%d  y=%d", (int)p.x, (int)p.y);
-        lv_label_set_text(s_lbl_xy, buf);
-    } else if (code == LV_EVENT_RELEASED) {
-        lv_obj_add_flag(s_cross, LV_OBJ_FLAG_HIDDEN);
-    }
-}
-
-static void corner_event_cb(lv_event_t *e)
-{
-    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    const char *name = (const char *)lv_event_get_user_data(e);
-    ESP_LOGI(TAG, "corner hit: %s", name);
-    lv_label_set_text(s_lbl_hit, name);
-}
-
-static void ui_touch_test(void)
+/* ---------------- 预览界面 ---------------- */
+static void ui_camera_preview(void)
 {
     lv_obj_t *scr = lv_screen_active();
     lv_obj_set_style_bg_color(scr, lv_color_hex(0x0d131b), 0);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
-    lv_obj_add_flag(scr, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_add_event_cb(scr, scr_event_cb, LV_EVENT_ALL, NULL);
 
-    /* 准星 */
-    s_cross = lv_obj_create(scr);
-    lv_obj_remove_style_all(s_cross);
-    lv_obj_set_size(s_cross, 44, 44);
-    lv_obj_set_style_border_color(s_cross, lv_color_hex(0xffd166), 0);
-    lv_obj_set_style_border_width(s_cross, 2, 0);
-    lv_obj_set_style_radius(s_cross, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_opa(s_cross, LV_OPA_TRANSP, 0);
-    lv_obj_add_flag(s_cross, LV_OBJ_FLAG_HIDDEN);
+    s_img_dsc.header.cf = LV_COLOR_FORMAT_RGB565;
+    s_img_dsc.header.w = PREVIEW_W;
+    s_img_dsc.header.h = PREVIEW_H;
+    s_img_dsc.header.stride = PREVIEW_W * 2;
+    s_img_dsc.data_size = PREVIEW_W * PREVIEW_H * 2;
+    s_img_dsc.data = s_frame_buf;
 
-    /* 顶部坐标 */
-    s_lbl_xy = lv_label_create(scr);
-    lv_label_set_text(s_lbl_xy, "TOUCH THE SCREEN");
-    lv_obj_set_style_text_font(s_lbl_xy, &lv_font_misans_16, 0);
-    lv_obj_set_style_text_color(s_lbl_xy, lv_color_hex(0x3ddc78), 0);
-    lv_obj_align(s_lbl_xy, LV_ALIGN_TOP_MID, 0, 8);
+    s_img = lv_image_create(scr);
+    lv_image_set_src(s_img, &s_img_dsc);
+    lv_obj_align(s_img, LV_ALIGN_TOP_MID, 0, 40);
 
-    /* 中间提示 */
-    lv_obj_t *hint = lv_label_create(scr);
-    lv_label_set_text(hint, "点四个角");
-    lv_obj_set_style_text_font(hint, &lv_font_misans_24, 0);
-    lv_obj_set_style_text_color(hint, lv_color_white(), 0);
-    lv_obj_align(hint, LV_ALIGN_CENTER, 0, -40);
+    lv_obj_t *title = lv_label_create(scr);
+    lv_label_set_text(title, "摄像头预览");
+    lv_obj_set_style_text_font(title, &lv_font_misans_16, 0);
+    lv_obj_set_style_text_color(title, lv_color_hex(0x3ddc78), 0);
+    lv_obj_align(title, LV_ALIGN_TOP_LEFT, 8, 10);
 
-    s_lbl_hit = lv_label_create(scr);
-    lv_label_set_text(s_lbl_hit, "----");
-    lv_obj_set_style_text_font(s_lbl_hit, &lv_font_misans_16, 0);
-    lv_obj_set_style_text_color(s_lbl_hit, lv_color_hex(0x7d8ea0), 0);
-    lv_obj_align(s_lbl_hit, LV_ALIGN_CENTER, 0, 20);
+    s_lbl_fps = lv_label_create(scr);
+    lv_label_set_text(s_lbl_fps, "waiting...");
+    lv_obj_set_style_text_font(s_lbl_fps, &lv_font_misans_16, 0);
+    lv_obj_set_style_text_color(s_lbl_fps, lv_color_hex(0x7d8ea0), 0);
+    lv_obj_align(s_lbl_fps, LV_ALIGN_BOTTOM_LEFT, 8, -8);
+}
 
-    /* 四角目标框：点中会显示 TL/TR/BL/BR，用来核对坐标映射 */
-    static const struct {
-        const char *name;
-        lv_align_t align;
-        int dx, dy;
-    } corners[] = {
-        {"TL", LV_ALIGN_TOP_LEFT,     6,   6},
-        {"TR", LV_ALIGN_TOP_RIGHT,   -6,   6},
-        {"BL", LV_ALIGN_BOTTOM_LEFT,  6,  -6},
-        {"BR", LV_ALIGN_BOTTOM_RIGHT, -6, -6},
-    };
-    for (size_t i = 0; i < sizeof(corners) / sizeof(corners[0]); i++) {
-        lv_obj_t *box = lv_button_create(scr);
-        lv_obj_set_size(box, 64, 64);
-        lv_obj_align(box, corners[i].align, corners[i].dx, corners[i].dy);
-        lv_obj_set_style_bg_color(box, lv_color_hex(0x185fa5), 0);
-        lv_obj_set_style_bg_opa(box, LV_OPA_COVER, 0);
-        lv_obj_set_style_radius(box, 10, 0);
-        lv_obj_add_event_cb(box, corner_event_cb, LV_EVENT_CLICKED, (void *)corners[i].name);
+/* ---------------- 摄像头任务 ---------------- */
+static void camera_task(void *arg)
+{
+    char buf[48];
+    int cnt = 0;
+    int64_t t0 = esp_timer_get_time();
 
-        lv_obj_t *lbl = lv_label_create(box);
-        lv_label_set_text(lbl, corners[i].name);
-        lv_obj_set_style_text_font(lbl, &lv_font_misans_16, 0);
-        lv_obj_center(lbl);
+    while (1) {
+        camera_fb_t *fb = esp_camera_fb_get();
+        if (fb == NULL) {
+            vTaskDelay(pdMS_TO_TICKS(50));
+            continue;
+        }
+
+        /* 一帧搞定三件事：BE→LE 换字节 + 旋转 90° + 写入 LVGL 图像缓冲 */
+        bsp_camera_blit(s_frame_buf, fb->buf, fb->width, fb->height, PREVIEW_ROTATE_CW);
+        esp_camera_fb_return(fb);
+
+        bsp_lvgl_lock();
+        lv_obj_invalidate(s_img);
+        bsp_lvgl_unlock();
+
+        cnt++;
+        if ((cnt % 30) == 0) {
+            int64_t dt = esp_timer_get_time() - t0;
+            int fps_x10 = (int)(30LL * 10000000 / dt);
+            t0 = esp_timer_get_time();
+            snprintf(buf, sizeof(buf), "fps=%d.%d  frames=%d", fps_x10 / 10, fps_x10 % 10, cnt);
+
+            bsp_lvgl_lock();
+            lv_label_set_text(s_lbl_fps, buf);
+            bsp_lvgl_unlock();
+
+            ESP_LOGI(TAG, "%s", buf);
+        }
     }
 }
 
@@ -127,7 +109,7 @@ static void heartbeat_task(void *arg)
 {
     uint32_t n = 0;
     while (1) {
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        vTaskDelay(pdMS_TO_TICKS(10000));
         ESP_LOGI(TAG, "alive #%lu  dram=%uKB  psram=%uKB",
                  (unsigned long)++n,
                  (unsigned)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
@@ -153,12 +135,19 @@ void app_main(void)
     ESP_ERROR_CHECK(bsp_lvgl_init());
     ESP_ERROR_CHECK(bsp_touch_init());
 
+    /* LVGL 图像源缓冲：PSRAM（LVGL 软件渲染时读它，不经 DMA） */
+    s_frame_buf = (uint8_t *)heap_caps_malloc(PREVIEW_W * PREVIEW_H * 2, MALLOC_CAP_SPIRAM);
+    ESP_ERROR_CHECK(s_frame_buf ? ESP_OK : ESP_ERR_NO_MEM);
+
     bsp_lvgl_lock();
-    ui_touch_test();
+    ui_camera_preview();
     bsp_lvgl_unlock();
 
+    ESP_ERROR_CHECK(bsp_camera_init());
     bsp_lcd_set_backlight(80);
-    ESP_LOGI(TAG, "M2 touch test screen shown");
 
+    xTaskCreatePinnedToCore(camera_task, "cam", 4096, NULL, 5, NULL, 1);
     xTaskCreatePinnedToCore(heartbeat_task, "hb", 3072, NULL, 2, NULL, 0);
+
+    ESP_LOGI(TAG, "M3 camera preview started");
 }
