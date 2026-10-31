@@ -10,7 +10,7 @@
  *        否则摸屏会往 TX 线上灌电平，串口直接乱码。
  */
 
-#define APP_VERSION "0.1.0-M0"
+#define APP_VERSION "0.1.0-M1"
 
 /* ---------------- I2C（PCA9557 / 触摸 / 摄像头 SCCB 共用） ---------------- */
 #define I2C_SDA_GPIO        1
