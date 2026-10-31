@@ -68,14 +68,28 @@ static void camera_task(void *arg)
         if (need_recog) {
             char name[24] = {0};
             float sim = 0;
+            uint16_t id = 0;
             esp_err_t r = face_recog_recognize(fb->buf, fb->width, fb->height,
-                                               name, sizeof(name), &sim);
+                                               name, sizeof(name), &sim, &id);
             ui_recog_t res = UI_RECOG_STRANGER;
             /* 设置页的相似度阈值在这里真正生效（只能比库内阈值更严） */
             if (r == ESP_OK && sim >= app_settings()->sim_thr) res = UI_RECOG_HIT;
             else if (r == ESP_ERR_INVALID_STATE) res = UI_RECOG_NOFACE;
+
+            char title[32] = {0}, sub[48] = {0};
+            if (res == UI_RECOG_HIT) {
+                /* 库内 id 只增不减，界面上换算成"第几个成员" */
+                uint16_t ids[MEMBER_MAX];
+                int cnt = face_members(ids, MEMBER_MAX);
+                int pos = 1;
+                for (int i = 0; i < cnt; i++) {
+                    if (ids[i] == id) { pos = i + 1; break; }
+                }
+                snprintf(title, sizeof(title), "成员 %d", pos);
+                snprintf(sub, sizeof(sub), "编号 %02d · 相似度 %.2f", pos, sim);
+            }
             bsp_lvgl_lock();
-            ui_recog_result(res, name, sim);
+            ui_recog_result(res, title, sub, sim);
             bsp_lvgl_unlock();
         }
 
@@ -83,8 +97,9 @@ static void camera_task(void *arg)
             /* 先识别一遍：库里已有人就不重复登记（否则同一个人会占多个 id） */
             char nm[24] = {0};
             float sim = 0;
+            uint16_t dup_id = 0;
             esp_err_t rr = face_recog_recognize(fb->buf, fb->width, fb->height,
-                                                nm, sizeof(nm), &sim);
+                                                nm, sizeof(nm), &sim, &dup_id);
             bool dup = (rr == ESP_OK && sim >= app_settings()->sim_thr);
 
             bsp_lvgl_lock();

@@ -34,6 +34,7 @@ static lv_obj_t *s_lbl_hint;
 static lv_obj_t *s_ov_ok;
 static lv_obj_t *s_lbl_ok_name;
 static lv_obj_t *s_lbl_ok_sub;
+static lv_obj_t *s_lbl_ok_time;
 
 static lv_obj_t *s_ov_no;
 static lv_obj_t *s_lbl_no_reason;
@@ -71,6 +72,8 @@ static bool s_recog_req;
 static bool s_enroll_req;
 static bool s_must_leave;
 static int s_enroll_frames;
+static bool s_enroll_started;   /* 点了「开始」才开始采集 */
+static lv_obj_t *s_btn_enroll_start;
 
 /* 结果页停留：先显示结果，过 ms 之后再跳到 target（否则一改文字就被下一屏盖掉） */
 static bool s_hold_active;
@@ -89,6 +92,8 @@ static void ui_hold(ui_state_t target, uint32_t ms)
 static char s_pw[8];
 static int s_pw_len;
 static bool s_list_delete_mode;
+static uint16_t s_list_ids[MEMBER_MAX];   /* 第 i 行对应的真实 id */
+static int s_list_cnt;
 
 /* ---------------- 小工具 ---------------- */
 static lv_obj_t *make_label(lv_obj_t *parent, const char *txt, const lv_font_t *font, uint32_t color)
@@ -199,16 +204,16 @@ static void key_cb(lv_event_t *e)
 static void row_cb(lv_event_t *e)
 {
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
-    uint16_t id = (uint16_t)(intptr_t)lv_event_get_user_data(e);
+    int idx = (int)(intptr_t)lv_event_get_user_data(e);
+    if (!s_list_delete_mode || idx < 0 || idx >= s_list_cnt) return;
 
-    if (!s_list_delete_mode) return;
-
+    uint16_t id = s_list_ids[idx];
     esp_err_t r = face_delete_member(id);
     char buf[48];
     if (r == ESP_OK) {
-        snprintf(buf, sizeof(buf), "已删除 成员 %u", (unsigned)id);
+        snprintf(buf, sizeof(buf), "已删除 成员 %d", idx + 1);
     } else {
-        snprintf(buf, sizeof(buf), "删除失败 %u", (unsigned)id);
+        snprintf(buf, sizeof(buf), "删除失败 成员 %d", idx + 1);
     }
     ESP_LOGW(TAG, "%s", buf);
     lv_label_set_text(s_lbl_list_title, buf);
@@ -217,27 +222,27 @@ static void row_cb(lv_event_t *e)
 
 void ui_list_refresh(void)
 {
-    uint16_t ids[MEMBER_MAX];
-    int n = face_members(ids, MEMBER_MAX);
+    s_list_cnt = face_members(s_list_ids, MEMBER_MAX);
 
     char sub[48];
     snprintf(sub, sizeof(sub), "共 %d 人", face_recog_count());
     lv_label_set_text(s_lbl_list_sub, sub);
 
     for (int i = 0; i < LIST_ROWS; i++) {
-        if (i < n) {
+        if (i < s_list_cnt) {
             lv_obj_remove_flag(s_row[i], LV_OBJ_FLAG_HIDDEN);
+            /* 显示「第几个」而不是库内 id：id 只增不减，删完人重录会是 17、18，
+             * 对使用者没意义；删除时再用 s_list_ids[i] 找真实 id */
             char txt[32];
-            snprintf(txt, sizeof(txt), "成员 %u", (unsigned)ids[i]);
+            snprintf(txt, sizeof(txt), "成员 %d", i + 1);
             lv_label_set_text(s_row_lbl[i], txt);
-            /* 重新绑定 id（列表顺序会变） */
             lv_obj_remove_event_cb(s_row[i], row_cb);
-            lv_obj_add_event_cb(s_row[i], row_cb, LV_EVENT_CLICKED, (void *)(intptr_t)ids[i]);
+            lv_obj_add_event_cb(s_row[i], row_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
         } else {
             lv_obj_add_flag(s_row[i], LV_OBJ_FLAG_HIDDEN);
         }
     }
-    if (n == 0) {
+    if (s_list_cnt == 0) {
         lv_label_set_text(s_lbl_list_sub, "库为空");
     }
 }
@@ -253,7 +258,19 @@ static void menu_enroll_cb(lv_event_t *e)
 {
     (void)e;
     s_enroll_frames = 0;
+    s_enroll_started = false;      /* 先让管理员对着画面调姿势 */
     ui_set_state(UI_ENROLLING);
+}
+
+static void enroll_start_cb(lv_event_t *e)
+{
+    (void)e;
+    s_enroll_started = true;
+    s_enroll_frames = 0;
+    lv_bar_set_value(s_bar_enroll, 0, LV_ANIM_OFF);
+    lv_label_set_text(s_lbl_enroll_tip, "请正对屏幕  0/10");
+    lv_obj_set_style_text_color(s_lbl_enroll_tip, lv_color_white(), 0);
+    lv_obj_add_flag(s_btn_enroll_start, LV_OBJ_FLAG_HIDDEN);
 }
 
 static void settings_refresh(void)
@@ -366,12 +383,51 @@ void ui_init(uint8_t *preview_buf, int preview_w, int preview_h)
     s_lbl_hint = make_label(s_scr, "请面向屏幕", &lv_font_misans_16, 0x7d8ea0);
     lv_obj_set_pos(s_lbl_hint, 8, PREVIEW_Y + preview_h + 14);
 
-    /* ④ 通行成功 */
+    /* ④ 通行成功（照设计稿：顶部时间+开锁中标签 / 勾 / 大字 / 副标 / 底部提示） */
     s_ov_ok = make_overlay(0x1f7a33);
+
+    s_lbl_ok_time = make_label(s_ov_ok, "00:00", &lv_font_misans_16, 0xe8f5ec);
+    lv_obj_set_pos(s_lbl_ok_time, 44, 12);
+
+    lv_obj_t *chip = lv_obj_create(s_ov_ok);
+    lv_obj_remove_style_all(chip);
+    lv_obj_set_size(chip, 92, 30);
+    lv_obj_set_pos(chip, 116, 6);
+    lv_obj_set_style_radius(chip, 15, 0);
+    lv_obj_set_style_border_color(chip, lv_color_hex(0xbfe6cd), 0);
+    lv_obj_set_style_border_width(chip, 1, 0);
+    lv_obj_t *chip_lbl = make_label(chip, "开锁中", &lv_font_misans_16, 0xffffff);
+    lv_obj_center(chip_lbl);
+
+    lv_obj_t *cir = lv_obj_create(s_ov_ok);
+    lv_obj_remove_style_all(cir);
+    lv_obj_set_size(cir, 96, 96);
+    lv_obj_set_pos(cir, 112, 108);
+    lv_obj_set_style_radius(cir, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(cir, lv_color_hex(0x35a052), 0);
+    lv_obj_set_style_bg_opa(cir, LV_OPA_COVER, 0);
+
+    static lv_point_precise_t ck[3] = {{140, 156}, {155, 171}, {182, 141}};
+    lv_obj_t *line = lv_line_create(s_ov_ok);
+    lv_line_set_points(line, ck, 3);
+    lv_obj_set_style_line_color(line, lv_color_white(), 0);
+    lv_obj_set_style_line_width(line, 7, 0);
+    lv_obj_set_style_line_rounded(line, true, 0);
+
     s_lbl_ok_name = make_label(s_ov_ok, "", &lv_font_misans_24, 0xffffff);
-    lv_obj_align(s_lbl_ok_name, LV_ALIGN_CENTER, 0, -40);
-    s_lbl_ok_sub = make_label(s_ov_ok, "门已开启", &lv_font_misans_16, 0xc9ecd1);
-    lv_obj_align(s_lbl_ok_sub, LV_ALIGN_CENTER, 0, 20);
+    lv_obj_align(s_lbl_ok_name, LV_ALIGN_TOP_MID, 0, 236);
+
+    s_lbl_ok_sub = make_label(s_ov_ok, "", &lv_font_misans_16, 0xc9ecd1);
+    lv_obj_align(s_lbl_ok_sub, LV_ALIGN_TOP_MID, 0, 278);
+
+    lv_obj_t *foot = lv_obj_create(s_ov_ok);
+    lv_obj_remove_style_all(foot);
+    lv_obj_set_size(foot, H_RES, 46);
+    lv_obj_set_pos(foot, 0, V_RES - 46);
+    lv_obj_set_style_bg_color(foot, lv_color_hex(0x17612a), 0);
+    lv_obj_set_style_bg_opa(foot, LV_OPA_COVER, 0);
+    lv_obj_t *foot_lbl = make_label(foot, "门已开 · 2s 后自动落锁", &lv_font_misans_16, 0xd8f3e1);
+    lv_obj_center(foot_lbl);
 
     /* ⑤ 通行拒绝 */
     s_ov_no = make_overlay(0xa72b22);
@@ -466,16 +522,18 @@ void ui_init(uint8_t *preview_buf, int preview_w, int preview_h)
     lv_obj_set_style_bg_color(strip, lv_color_hex(0x0d131b), 0);
     lv_obj_set_style_bg_opa(strip, LV_OPA_80, 0);
 
-    s_lbl_enroll_tip = make_label(s_ov_enroll, "保持正对", &lv_font_misans_16, 0xffffff);
-    lv_obj_set_pos(s_lbl_enroll_tip, 12, 366);
+    s_lbl_enroll_tip = make_label(s_ov_enroll, "请正对屏幕", &lv_font_misans_16, 0xffffff);
+    lv_obj_set_pos(s_lbl_enroll_tip, 12, 364);
 
     s_bar_enroll = lv_bar_create(s_ov_enroll);
-    lv_obj_set_size(s_bar_enroll, 190, 12);
-    lv_obj_set_pos(s_bar_enroll, 12, 396);
+    lv_obj_set_size(s_bar_enroll, 296, 12);
+    lv_obj_set_pos(s_bar_enroll, 12, 390);
     lv_bar_set_range(s_bar_enroll, 0, ENROLL_FRAMES);
     lv_bar_set_value(s_bar_enroll, 0, LV_ANIM_OFF);
 
-    make_btn(s_ov_enroll, "取消", 212, 382, 96, 42, list_back_cb, NULL, 0x8a5a00, 0xffffff);
+    s_btn_enroll_start = make_btn(s_ov_enroll, "开始", 12, 414, 140, 46,
+                                  enroll_start_cb, NULL, 0x2e7d32, 0xffffff);
+    make_btn(s_ov_enroll, "取消", 168, 414, 140, 46, list_back_cb, NULL, 0x8a5a00, 0xffffff);
 
     ESP_LOGI(TAG, "ui ready (8 screens + auth/members/settings)");
 }
@@ -559,8 +617,11 @@ void ui_set_state(ui_state_t st)
         /* 预览图必须留着：管理员要看着调姿势，否则不知道有没有对正 */
         lv_obj_remove_flag(s_ov_enroll, LV_OBJ_FLAG_HIDDEN);
         lv_bar_set_value(s_bar_enroll, 0, LV_ANIM_OFF);
-        lv_label_set_text(s_lbl_enroll_tip, "保持正对");
+        lv_label_set_text(s_lbl_enroll_tip, "请正对屏幕");
         lv_obj_set_style_text_color(s_lbl_enroll_tip, lv_color_white(), 0);
+        /* 还没点「开始」就把按钮显示出来 */
+        if (s_enroll_started) lv_obj_add_flag(s_btn_enroll_start, LV_OBJ_FLAG_HIDDEN);
+        else lv_obj_remove_flag(s_btn_enroll_start, LV_OBJ_FLAG_HIDDEN);
         break;
 
     default:
@@ -634,6 +695,8 @@ void ui_frame_feed(int n_face, const face_box_t *box)
     if (s_state == UI_ENROLLING) {
         char buf[32];
 
+        if (!s_enroll_started) return;   /* 只刷新预览，等管理员点「开始」 */
+
         /* 采集超时：30 秒还没采满就判失败，别让管理员干等 */
         if (lv_tick_elaps(s_state_tick) > 30000 && s_enroll_frames < ENROLL_FRAMES) {
             lv_label_set_text(s_lbl_enroll_tip, "录入失败 超时");
@@ -692,7 +755,7 @@ void ui_frame_feed(int n_face, const face_box_t *box)
     }
 }
 
-void ui_recog_result(ui_recog_t r, const char *name, float sim)
+void ui_recog_result(ui_recog_t r, const char *title, const char *sub, float sim)
 {
     if (s_state != UI_SCANNING) return;
 
@@ -705,13 +768,16 @@ void ui_recog_result(ui_recog_t r, const char *name, float sim)
     s_must_leave = true;
 
     if (r == UI_RECOG_HIT) {
-        char sub[48];
-        snprintf(sub, sizeof(sub), "相似度 %.2f", sim);
-        lv_label_set_text(s_lbl_ok_name, name ? name : "已登记");
-        lv_label_set_text(s_lbl_ok_sub, sub);
+        /* 时间：暂时用开机时长，接 WiFi/NTP 之后换成真实时间 */
+        uint32_t min = (uint32_t)(lv_tick_get() / 60000);
+        char tm[16];
+        snprintf(tm, sizeof(tm), "%02u:%02u", (unsigned)((min / 60) % 24), (unsigned)(min % 60));
+        lv_label_set_text(s_lbl_ok_time, tm);
+        lv_label_set_text(s_lbl_ok_name, title ? title : "已登记");
+        lv_label_set_text(s_lbl_ok_sub, sub ? sub : "");
         s_fail_cnt = 0;
         ui_set_state(UI_SUCCESS);
-        ESP_LOGI(TAG, "SUCCESS %s", name ? name : "-");
+        ESP_LOGI(TAG, "SUCCESS %s (%.2f)", title ? title : "-", sim);
     } else {
         s_fail_cnt++;
         if (s_fail_cnt >= app_settings()->fail_max) {

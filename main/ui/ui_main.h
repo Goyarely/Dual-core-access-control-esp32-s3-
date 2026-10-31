@@ -53,8 +53,8 @@ typedef enum {
     UI_RECOG_NOFACE,      /* 这一帧没检测到脸（画面抖动/人走开） */
 } ui_recog_t;
 
-/** 识别结果回填（由 main.c 调模型后调用） */
-void ui_recog_result(ui_recog_t r, const char *name, float sim);
+/** 识别结果回填：title = 大字（如「成员 3」），sub = 副标题（如「编号 03 · 相似度 0.92」） */
+void ui_recog_result(ui_recog_t r, const char *title, const char *sub, float sim);
 
 /** 录入结果回填 */
 void ui_enroll_result(bool ok, int total);

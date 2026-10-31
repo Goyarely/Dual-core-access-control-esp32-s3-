@@ -199,8 +199,16 @@ extern "C" esp_err_t face_delete_member(uint16_t id)
 {
     if (face_recog_init() != ESP_OK) return ESP_FAIL;
     esp_err_t err = s_recog->delete_feat(id);
-    ESP_LOGW(TAG, "delete id=%u -> %s (left %d)", (unsigned)id, esp_err_to_name(err),
-             (int)s_recog->get_num_feats());
+    int left = (int)s_recog->get_num_feats();
+
+    /* 删空了就把库文件整个删掉：库的 id 是 num_feats_total+1、只增不减，
+     * 不清文件的话下次录入会接着 17、18 往上排（实测踩过）。
+     * clear_all_feats() 的实现就是 remove(face.db)，下次录入从 1 重新开始。 */
+    if (err == ESP_OK && left == 0) {
+        s_recog->clear_all_feats();
+        ESP_LOGW(TAG, "成员已清空，库文件重置，id 从 1 开始");
+    }
+    ESP_LOGW(TAG, "delete id=%u -> %s (left %d)", (unsigned)id, esp_err_to_name(err), left);
     return err;
 }
 
@@ -224,7 +232,8 @@ extern "C" esp_err_t face_recog_enroll(const uint8_t *buf, int w, int h)
 }
 
 extern "C" esp_err_t face_recog_recognize(const uint8_t *buf, int w, int h,
-                                          char *name_out, size_t name_len, float *score_out)
+                                          char *name_out, size_t name_len, float *score_out,
+                                          uint16_t *id_out)
 {
     if (face_recog_init() != ESP_OK) return ESP_FAIL;
 
@@ -244,6 +253,7 @@ extern "C" esp_err_t face_recog_recognize(const uint8_t *buf, int w, int h,
                 snprintf(name_out, name_len, "Person_%u", (unsigned)r.id);
             }
             if (score_out) *score_out = r.similarity;
+            if (id_out) *id_out = r.id;
             ESP_LOGW(TAG, "recognize: id=%u sim=%.2f", (unsigned)r.id, r.similarity);
             return ESP_OK;
         }

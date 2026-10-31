@@ -40,7 +40,8 @@ esp_err_t face_recog_enroll(const uint8_t *buf, int w, int h);
 
 /** 识别当前帧；ESP_OK = 命中（name_out/score_out 有效），ESP_ERR_NOT_FOUND = 陌生人/无人脸 */
 esp_err_t face_recog_recognize(const uint8_t *buf, int w, int h,
-                               char *name_out, size_t name_len, float *score_out);
+                               char *name_out, size_t name_len, float *score_out,
+                               uint16_t *id_out);
 
 /** 清空人脸库 */
 esp_err_t face_recog_clear(void);

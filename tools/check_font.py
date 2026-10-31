@@ -25,7 +25,9 @@ def main() -> int:
         src = strip_comments((ROOT / rel).read_text(encoding="utf-8"))
         for lit in re.findall(r'"((?:[^"\\]|\\.)*)"', src):
             for ch in lit:
-                if "\u4e00" <= ch <= "\u9fff":
+                # 任何非 ASCII 字符都要在字库里：之前只查 CJK 区，
+                # 结果间隔号 "·"(U+00B7) 这种标点漏掉，屏幕上就是方块
+                if ord(ch) > 0x7F:
                     used.setdefault(ch, rel)
 
     bad = 0

@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>门禁 UI 2.0 · 交互原型与设计规范</title>
+<style>
+:root{
+  --ink:#1c2330; --mut:#5c6675; --faint:#8a94a3;
+  --blue:#185fa5; --blue-50:#e6f1fb; --blue-100:#b5d4f4;
+  --teal:#0f6e56; --teal-50:#e1f5ee;
+  --green:#1e8e4f; --red:#c4322a; --amber:#b26a00;
+  --pv:#0d1420; --line:#dde3ea; --bg:#f6f8fa; --card:#fff;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif;color:var(--ink);background:var(--bg);line-height:1.65;font-size:15px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;gap:4px;align-items:center;height:52px;overflow-x:auto}
+nav a{color:var(--mut);text-decoration:none;font-size:13.5px;padding:6px 12px;border-radius:8px;white-space:nowrap}
+nav a:hover{background:var(--blue-50);color:var(--blue)}
+nav .brand{font-weight:600;margin-right:12px;white-space:nowrap}
+nav .brand em{font-style:normal;color:var(--blue)}
+header{background:linear-gradient(180deg,#0e2a47,#123a63);color:#fff;padding:54px 0 48px}
+header h1{font-size:30px;font-weight:600}
+header p{color:#bcd4ec;margin-top:10px;max-width:760px;font-size:15px}
+.chips{margin-top:20px;display:flex;gap:10px;flex-wrap:wrap}
+.chip{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:4px 13px;border-radius:999px;font-size:12.5px;color:#dceafc}
+section{padding:48px 0 6px}
+h2{font-size:22px;font-weight:600;display:flex;align-items:center;gap:10px}
+h2 .no{font-size:12px;color:var(--blue);background:var(--blue-50);border:1px solid var(--blue-100);border-radius:6px;padding:2px 8px;font-weight:500}
+p.lead{color:var(--mut);margin:10px 0 22px;max-width:880px;font-size:14.5px}
+h3{font-size:16px;font-weight:600;margin:24px 0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0 4px}
+th{text-align:left;font-weight:600;color:var(--mut);border-bottom:1.5px solid var(--line);padding:7px 9px;white-space:nowrap}
+td{border-bottom:1px solid var(--line);padding:7px 9px;vertical-align:top}
+tr:last-child td{border-bottom:none}
+code{font-family:"JetBrains Mono",Consolas,monospace;font-size:.9em;background:#eef1f5;border-radius:5px;padding:1px 6px;color:#28405e}
+.sw{display:inline-block;width:15px;height:15px;border-radius:4px;vertical-align:-3px;margin-right:8px;border:1px solid rgba(0,0,0,.12)}
+.tag{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:999px;font-weight:500}
+.tag.b{background:var(--blue-50);color:var(--blue)} .tag.g{background:#e6f3ea;color:var(--green)}
+.tag.r{background:#fbeceb;color:var(--red)} .tag.a{background:#faf0dd;color:var(--amber)}
+.note{border-left:3px solid var(--blue);background:var(--blue-50);border-radius:0 10px 10px 0;padding:12px 16px;font-size:13.5px;color:#274a6e;margin:14px 0}
+
+/* ============ 手机与屏幕公共 ============ */
+.proto-row{display:grid;grid-template-columns:344px 1fr;gap:30px;align-items:start}
+@media(max-width:860px){.proto-row{grid-template-columns:1fr}}
+.phone{width:344px;background:#11151b;border-radius:30px;padding:12px;box-shadow:0 6px 22px rgba(15,23,34,.22)}
+.screen{width:320px;height:480px;border-radius:20px;overflow:hidden;position:relative;display:none;flex-direction:column;font-size:13px;background:#0d1420}
+.screen.on{display:flex;animation:fadein .2s ease}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+.sbar{height:30px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 14px;font-size:11px;letter-spacing:.3px}
+.sbar.dark{color:#8fa1b3}.sbar.light{color:#5c6675}
+.sbar .lk{font-size:10px;border:1px solid currentColor;border-radius:999px;padding:0 7px;line-height:15px;opacity:.85}
+/* 预览区 + 信息卡分层 */
+.pv{flex:1;position:relative;min-height:0}
+.info{position:relative;z-index:2;background:#fff;color:var(--ink);margin:-18px 10px 12px;border-radius:16px;padding:14px 16px;box-shadow:0 2px 10px rgba(10,20,30,.18)}
+.info .t1{font-size:16.5px;font-weight:600}
+.info .t2{font-size:12px;color:var(--mut);margin-top:3px}
+/* 人脸框 */
+.facebox{position:absolute;left:50%;top:46%;width:96px;height:118px;transform:translate(-50%,-50%)}
+.fb{position:absolute;width:22px;height:22px;border:3px solid #4ce08a}
+.fb.tl{left:0;top:0;border-right:none;border-bottom:none;border-radius:6px 0 0 0}
+.fb.tr{right:0;top:0;border-left:none;border-bottom:none;border-radius:0 6px 0 0}
+.fb.bl{left:0;bottom:0;border-right:none;border-top:none;border-radius:0 0 0 6px}
+.fb.br{right:0;bottom:0;border-left:none;border-top:none;border-radius:0 0 6px 0}
+.scan .fb{animation:cpulse 1.2s ease-in-out infinite}
+@keyframes cpulse{0%,100%{opacity:1}50%{opacity:.35}}
+.ghostface{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);width:76px;height:100px;border:2px dashed rgba(120,150,180,.45);border-radius:38px}
+.ghostface::before{content:"";position:absolute;left:15px;top:42px;width:13px;height:4px;border-radius:2px;background:rgba(120,150,180,.4);box-shadow:33px 0 0 rgba(120,150,180,.4)}
+.ghostface::after{content:"";position:absolute;left:26px;bottom:18px;width:24px;height:3px;border-radius:2px;background:rgba(120,150,180,.35)}
+.scanline{position:absolute;left:7%;right:7%;top:12%;height:2px;background:rgba(76,224,138,.85);animation:sweep 1.4s ease-in-out infinite}
+@keyframes sweep{0%,100%{top:14%;opacity:0}12%{opacity:1}50%{top:72%}88%{opacity:1}99%{opacity:0}}
+.led{display:inline-block;width:8px;height:8px;border-radius:50%;background:#3ddc78;animation:led 2s ease-in-out infinite}
+@keyframes led{0%,100%{opacity:1}50%{opacity:.25}}
+/* 进度条 */
+.bar{height:7px;background:#e4e9ef;border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--blue);border-radius:4px}
+.bar.green i{background:var(--green)}
+/* 状态点阵 */
+.fdots{display:flex;gap:6px;margin-top:10px}
+.fdots i{width:10px;height:10px;border-radius:50%;background:#e9c9c6}
+.fdots i.on{background:var(--red)}
+/* 全色结果屏 */
+.sfull{align-items:center;justify-content:center;text-align:center;color:#fff}
+.sfull .zone{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1}
+.icirc{width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.icirc svg{width:38px;height:38px}
+.ok-name{font-size:26px;font-weight:600;letter-spacing:3px}
+.ok-sub{font-size:12.5px;opacity:.85;margin-top:7px}
+.reasons{display:flex;gap:8px;justify-content:center;margin:12px 0 2px}
+.reasons i{font-style:normal;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.4);border-radius:999px;padding:2px 12px;font-size:11px}
+.reasons i.on{background:#fff;color:var(--red);font-weight:600}
+.strip{flex:none;background:rgba(0,0,0,.22);text-align:center;padding:10px 0;font-size:12.5px;width:100%}
+.padlock{width:44px;height:36px;margin:0 auto 16px;position:relative}
+.padlock .body{position:absolute;bottom:0;width:44px;height:28px;border-radius:8px;background:rgba(255,255,255,.9)}
+.padlock .shk{position:absolute;top:0;left:8px;width:28px;height:24px;border:6px solid rgba(255,255,255,.9);border-bottom:none;border-radius:14px 14px 0 0}
+/* 浅色屏 */
+.slight{background:#f4f6f9;color:var(--ink)}
+.lhead{background:var(--blue);color:#fff;padding:11px 16px;font-size:14.5px;font-weight:600;display:flex;justify-content:space-between;align-items:center;flex:none}
+.litem{background:#fff;margin:9px 14px 0;border-radius:12px;padding:12px 15px;display:flex;align-items:center;gap:11px;border:1px solid #e4e9f0;font-size:13.5px}
+.litem .ic{width:27px;height:27px;border-radius:8px;background:var(--blue-50);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:14px;flex:none}
+.litem .arr{margin-left:auto;color:#b7c1cd}
+.litem small{color:var(--mut);font-size:11px;margin-left:auto}
+.litem .arr~small{margin-right:6px}
+.lfoot{margin-top:auto;text-align:center;color:#98a3b1;font-size:10.5px;padding:9px}
+/* 记录表 */
+.rrow{display:flex;align-items:center;gap:9px;background:#fff;margin:8px 14px 0;border-radius:10px;padding:9px 13px;border:1px solid #e4e9f0;font-size:12.5px}
+.rrow .who{font-weight:600}
+.rrow .when{color:var(--faint);font-size:11px}
+.rrow .st{margin-left:auto;font-size:11px;padding:1px 9px;border-radius:999px}
+.rrow .st.g{background:#e6f3ea;color:var(--green)} .rrow .st.r{background:#fbeceb;color:var(--red)}
+/* toast */
+.toast{position:absolute;left:50%;bottom:64px;transform:translateX(-50%);background:rgba(18,28,40,.94);color:#fff;font-size:12px;padding:8px 15px;border-radius:10px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;z-index:9}
+.toast.on{opacity:1}
+
+/* ============ 控制台 ============ */
+.panel .card{margin-bottom:14px}
+.panel h4{font-size:13px;color:var(--mut);font-weight:600;margin-bottom:9px;text-transform:none}
+.radios{display:flex;gap:8px;flex-wrap:wrap}
+.radios label{border:1px solid var(--line);border-radius:10px;padding:7px 13px;font-size:13px;cursor:pointer;background:#fff}
+.radios input{display:none}
+.radios input:checked+span{color:var(--blue);font-weight:600}
+.radios label:has(input:checked){border-color:var(--blue);background:var(--blue-50)}
+.btns{display:flex;gap:9px;flex-wrap:wrap}
+.btn{border:none;border-radius:10px;padding:9px 16px;font-size:13.5px;cursor:pointer;font-family:inherit}
+.btn.pri{background:var(--blue);color:#fff}
+.btn.pri:hover{background:#124d88}
+.btn.sec{background:#eef1f5;color:var(--ink)}
+.btn.warn{background:#faf0dd;color:var(--amber)}
+.statechip{font-family:"JetBrains Mono",Consolas,monospace;font-size:12.5px;background:#0f1722;color:#7fd6a4;border-radius:8px;padding:5px 11px;display:inline-block}
+.mono{font-family:"JetBrains Mono",Consolas,monospace}
+#evtlog{font-family:"JetBrains Mono",Consolas,monospace;font-size:11.5px;line-height:1.8;background:#0f1722;color:#c7d6e4;border-radius:10px;padding:12px 14px;height:190px;overflow-y:auto}
+#evtlog .g{color:#7fd6a4} #evtlog .r{color:#ef9a93} #evtlog .b{color:#8fbce8} #evtlog .dim{color:#5f7186}
+.switch{display:flex;align-items:center;gap:9px;font-size:13.5px;cursor:pointer;user-select:none}
+.switch input{display:none}
+.switch i{width:38px;height:21px;border-radius:999px;background:#d5dbe3;position:relative;transition:background .2s;font-style:normal}
+.switch i::after{content:"";position:absolute;top:2.5px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s}
+.switch input:checked+i{background:var(--green)}
+.switch input:checked+i::after{left:19px}
+
+/* ============ 画廊 ============ */
+.gal{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+@media(max-width:980px){.gal{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.gal{grid-template-columns:1fr}}
+.gslot{display:flex;flex-direction:column;align-items:center}
+.gframe{width:250px;height:372px;border-radius:22px;background:#11151b;padding:6px;box-shadow:0 3px 12px rgba(15,23,34,.16)}
+.gframe .screen{transform:scale(.712);transform-origin:top left;display:flex}
+.gcap{margin-top:11px;text-align:center}
+.gcap b{font-size:13px;display:block}
+.gcap span{font-size:11.5px;color:var(--mut);display:block;margin-top:2px;line-height:1.5}
+footer{margin-top:52px;border-top:1px solid var(--line);padding:24px 0 56px;color:var(--faint);font-size:13px}
+footer a{color:var(--blue);text-decoration:none}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <span class="brand">门禁 <em>UI 2.0</em></span>
+  <a href="#proto">交互原型</a><a href="#gallery">界面总览</a>
+  <a href="#token">设计规范</a><a href="#motion">动效</a><a href="#map">LVGL 映射</a>
+  <a href="项目总览.html">← 项目总览</a>
+</div></nav>
+
+<header><div class="wrap">
+  <h1>门禁 UI 2.0 · 交互原型与设计规范</h1>
+  <p>ST7796U 320×480 竖屏 · LVGL 9.5。本页包含可点击的状态机原型、九个界面的优化设计与完整设计令牌——所有色值、动效时长均标注 LVGL 对应 API，可直接翻译为代码。</p>
+  <div class="chips">
+    <span class="chip">可交互状态机</span><span class="chip">设计令牌 → LVGL API</span>
+    <span class="chip">预览/信息分层版式</span><span class="chip">证据链结果页</span><span class="chip">动效规范 200/300ms</span>
+  </div>
+</div></header>
+
+<!-- ================= 交互原型 ================= -->
+<section id="proto"><div class="wrap">
+  <h2><span class="no">01</span>交互原型（可点击）</h2>
+  <p class="lead">右侧控制台模拟 face_engine 与双板协议事件：选择身份 → 开始识别，或长按屏幕进入管理员菜单。事件日志窗口同步打印状态机输出，与真实固件的日志格式一致。</p>
+
+  <div class="proto-row">
+    <div class="phone"><div class="screen on" id="scr-idle">
+      <div class="sbar dark"><span id="clk">16:20</span><span class="lk" id="lkchip">已上锁</span></div>
+      <div class="pv"><div class="ghostface"></div></div>
+      <div class="info">
+        <div class="t1"><span class="led"></span>&nbsp;请面向屏幕</div>
+        <div class="t2">支持人脸识别 · 触摸此处长按进入管理</div>
+      </div>
+    </div>
+
+    <div class="screen scan" id="scr-scan">
+      <div class="sbar dark"><span>16:20</span><span class="lk">已上锁</span></div>
+      <div class="pv"><div class="facebox"><i class="fb tl"></i><i class="fb tr"></i><i class="fb bl"></i><i class="fb br"></i></div><div class="scanline"></div></div>
+      <div class="info"><div class="t1">识别中…</div><div class="t2">检测稳定 3 帧 · 正在提取特征</div></div>
+    </div>
+
+    <div class="screen" id="scr-live">
+      <div class="sbar dark"><span>16:20</span><span class="lk">已上锁</span></div>
+      <div class="pv"><div class="facebox"><i class="fb tl"></i><i class="fb tr"></i><i class="fb bl"></i><i class="fb br"></i></div>
+        <div style="position:absolute;left:0;right:0;top:15%;text-align:center;font-size:17px;font-weight:600;color:#ffd166;text-shadow:0 1px 4px rgba(0,0,0,.5)" id="live-arr">◀</div></div>
+      <div class="info">
+        <div class="t1" id="live-text">请向左转头</div>
+        <div class="t2" style="margin-bottom:9px">动作挑战 · 2s 内完成</div>
+        <div class="bar"><i id="live-fill"></i></div>
+      </div>
+    </div>
+
+    <div class="screen sfull" id="scr-ok" style="background:#1e8e4f">
+      <div class="sbar" style="color:#d7f0e0"><span>16:20</span><span class="lk">开锁中</span></div>
+      <div class="zone">
+        <div class="icirc"><svg viewBox="0 0 40 40" fill="none"><path d="M10 21 L17 28 L30 13" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="stroke-dasharray:40;stroke-dashoffset:40;animation:draw .45s ease .15s forwards"/></svg></div>
+        <div class="ok-name">张 三</div>
+        <div class="ok-sub">工号 07 · 活体通过 · 相似度 0.92</div>
+        <div class="reasons"><i>抓拍已留证</i></div>
+      </div>
+      <div class="strip" id="ok-strip">门已开 · 2s 后自动落锁</div>
+      <style>@keyframes draw{to{stroke-dashoffset:0}}</style>
+    </div>
+
+    <div class="screen sfull" id="scr-no" style="background:#c4322a">
+      <div class="sbar" style="color:#f2cfcc"><span>16:20</span><span class="lk">已上锁</span></div>
+      <div class="zone">
+        <div class="icirc"><svg viewBox="0 0 40 40" fill="none"><path d="M12 12 L28 28 M28 12 L12 28" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg></div>
+        <div class="ok-name" style="font-size:22px;letter-spacing:2px">拒绝通行</div>
+        <div class="reasons"><i class="on" id="rs1">陌生人</i><i id="rs2">活体失败</i></div>
+        <div class="fdots" style="justify-content:center" id="fdots"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="ok-sub" id="no-sub">已记录并上报 · 剩余尝试 5 次</div>
+      </div>
+      <div class="strip">抓拍留证 · 已写入日志并上报</div>
+    </div>
+
+    <div class="screen sfull" id="scr-lock" style="background:#8a5a00">
+      <div class="sbar" style="color:#f0e2c8"><span>16:20</span><span class="lk">已上锁</span></div>
+      <div class="zone">
+        <div class="padlock"><i class="shk"></i><i class="body"></i></div>
+        <div class="ok-name" style="font-size:20px;letter-spacing:2px">尝试次数过多</div>
+        <div class="ok-sub" style="margin-top:14px">已锁定，拒绝一切认证请求</div>
+        <div style="font-size:44px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:8px"><span id="lock-secs">60</span><span style="font-size:16px;font-weight:400"> s</span></div>
+        <div class="ok-sub" id="lock-eta">预计 16:21 解除</div>
+      </div>
+      <div class="strip">DOOR_LOCKOUT · 60s 倒计时（GD32 侧计时）</div>
+    </div>
+
+    <div class="screen slight" id="scr-menu">
+      <div class="lhead"><span>管理员菜单</span><span style="font-size:11px;font-weight:400;opacity:.85">admin01</span></div>
+      <div class="litem" onclick="doEnroll()"><span class="ic">＋</span>录入人脸<small>3 帧 · 约 2s</small><span class="arr">›</span></div>
+      <div class="litem" onclick="toast('演示版：删除成员走确认弹窗')"><span class="ic">－</span>删除成员<span class="arr">›</span></div>
+      <div class="litem" onclick="show('scr-recs')"><span class="ic">≡</span>查看通行记录<small>最近 64 条</small><span class="arr">›</span></div>
+      <div class="litem" onclick="toast('演示版：阈值/锁定时长设置')"><span class="ic">⚙</span>阈值与锁定设置<span class="arr">›</span></div>
+      <div class="toast" id="toast"></div>
+      <div class="lfoot">door_access v1.0 · 人脸库 1/32</div>
+    </div>
+
+    <div class="screen slight" id="scr-enroll">
+      <div class="lhead"><span>录入人脸</span><span id="en-n">1/3</span></div>
+      <div class="pv" style="background:#101720"><div class="facebox"><i class="fb tl"></i><i class="fb tr"></i><i class="fb bl"></i><i class="fb br"></i></div></div>
+      <div class="info">
+        <div class="t1">保持正对，缓慢左右转头</div>
+        <div class="t2" style="margin-bottom:9px">embedding 取均值后写入 NVS</div>
+        <div class="bar"><i id="en-fill"></i></div>
+      </div>
+    </div>
+
+    <div class="screen slight" id="scr-recs">
+      <div class="lhead"><span>通行记录</span><span style="font-size:11px;font-weight:400">最近 64 条</span></div>
+      <div class="rrow"><span class="who">张三</span><span class="when">今日 16:14 · 人脸</span><span class="st g">通行</span></div>
+      <div class="rrow"><span class="who">张三</span><span class="when">今日 09:02 · 人脸</span><span class="st g">通行</span></div>
+      <div class="rrow"><span class="who">未知</span><span class="when">今日 08:47 · 刷脸</span><span class="st r">拒绝</span></div>
+      <div class="rrow"><span class="who">李四</span><span class="when">昨日 18:31 · 密码</span><span class="st g">通行</span></div>
+      <div class="rrow"><span class="who">admin</span><span class="when">昨日 18:30 · 远程查询</span><span class="st" style="background:#eef1f5;color:#5c6675">状态</span></div>
+      <div class="lfoot">GD32 AT24C02 环形日志 · 掉电不丢</div>
+    </div>
+    </div>
+
+    <div class="panel">
+      <div class="card">
+        <h4>模拟身份（face_engine 输入）</h4>
+        <div class="radios">
+          <label><input type="radio" name="ident" value="known" checked><span>已录入成员</span></label>
+          <label><input type="radio" name="ident" value="stranger"><span>陌生人</span></label>
+          <label><input type="radio" name="ident" value="liveness_fail"><span>活体失败</span></label>
+        </div>
+      </div>
+      <div class="card">
+        <h4>操作</h4>
+        <div class="btns">
+          <button class="btn pri" onclick="startScan()">开始识别</button>
+          <button class="btn sec" onclick="openMenu()">管理员菜单</button>
+          <button class="btn sec" onclick="resetAll()">重置</button>
+        </div>
+        <p style="font-size:12px;color:var(--mut);margin-top:9px">也可在待机页<b>长按屏幕 800ms</b> 进入菜单（与固件手势一致）。</p>
+      </div>
+      <div class="card">
+        <h4>状态机</h4>
+        <span class="statechip" id="statechip">IDLE</span>
+        <div style="margin-top:10px;font-size:12.5px;color:var(--mut)">连续失败 <b id="failn" class="mono">0</b>/5 次 → 锁定 60s</div>
+        <label class="switch" style="margin-top:12px"><input type="checkbox" id="auto" onchange="toggleAuto(this.checked)"><i></i>自动演示循环</label>
+      </div>
+      <div class="card">
+        <h4>事件日志（固件格式）</h4>
+        <div id="evtlog"></div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ================= 界面总览 ================= -->
+<section id="gallery"><div class="wrap">
+  <h2><span class="no">02</span>九个界面总览</h2>
+  <p class="lead">预览类界面统一「上 60% 摄像头 / 下 40% 信息卡」分层；全色结果页承担情绪表达；浅色页承载管理功能。三个分区职责固定，界面之间只有信息卡内容变化——LVGL 实现时预览 canvas 常驻，不随切屏销毁。</p>
+  <div class="gal">
+    <div class="gslot"><div class="gframe"><div class="screen on">
+      <div class="sbar dark"><span>16:20</span><span class="lk">已上锁</span></div>
+      <div class="pv"><div class="ghostface"></div></div>
+      <div class="info"><div class="t1"><span class="led"></span>&nbsp;请面向屏幕</div><div class="t2">支持人脸识别 · 长按进入管理</div></div>
+    </div></div><div class="gcap"><b>① 待机 · 预览</b><span>呼吸 LED = 心跳正常<br>canvas 常驻 20fps 拷贝</span></div></div>
+    <div class="gslot"><div class="gframe"><div class="screen on scan">
+      <div class="sbar dark"><span>16:20</span><span class="lk">已上锁</span></div>
+      <div class="pv"><div class="facebox"><i class="fb tl"></i><i class="fb tr"></i><i class="fb bl"></i><i class="fb br"></i></div><div class="scanline"></div></div>
+      <div class="info"><div class="t1">识别中…</div><div class="t2">检测稳定 3 帧 · 提取特征</div></div>
+    </div></div><div class="gcap"><b>② 识别中</b><span>角框脉冲 + 扫描线 1.4s 循环<br>稳定确认后才触发识别</span></div></div>
+    <div class="gslot"><div class="gframe"><div class="screen on">
+      <div class="sbar dark"><span>16:20</span><span class="lk">已上锁</span></div>
+      <div class="pv"><div class="facebox"><i class="fb tl"></i><i class="fb tr"></i><i class="fb bl"></i><i class="fb br"></i></div>
+        <div style="position:absolute;left:0;right:0;top:15%;text-align:center;font-size:17px;font-weight:600;color:#ffd166">◀</div></div>
+      <div class="info"><div class="t1">请向左转头</div><div class="t2" style="margin-bottom:9px">动作挑战 · 2s 内完成</div><div class="bar"><i style="width:62%"></i></div></div>
+    </div></div><div class="gcap"><b>③ 活体挑战</b><span>框位移判定 · 超时判失败<br>防静态照片，话术不称"活体检测"</span></div></div>
+    <div class="gslot"><div class="gframe"><div class="screen on sfull" style="background:#1e8e4f">
+      <div class="sbar" style="color:#d7f0e0"><span>16:20</span><span class="lk">开锁中</span></div>
+      <div class="zone"><div class="icirc"><svg viewBox="0 0 40 40" fill="none"><path d="M10 21 L17 28 L30 13" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="ok-name">张 三</div><div class="ok-sub">工号 07 · 活体通过 · 0.92</div><div class="reasons"><i>抓拍已留证</i></div></div>
+      <div class="strip">门已开 · 2s 后自动落锁</div>
+    </div></div><div class="gcap"><b>④ 通行成功</b><span>勾 300ms 描画 + 2s 落锁倒计时<br>GD32 侧同步蜂鸣器短鸣</span></div></div>
+    <div class="gslot"><div class="gframe"><div class="screen on sfull" style="background:#c4322a">
+      <div class="sbar" style="color:#f2cfcc"><span>16:20</span><span class="lk">已上锁</span></div>
+      <div class="zone"><div class="icirc"><svg viewBox="0 0 40 40" fill="none"><path d="M12 12 L28 28 M28 12 L12 28" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg></div>
+      <div class="ok-name" style="font-size:22px">拒绝通行</div>
+      <div class="reasons"><i class="on">陌生人</i><i>活体失败</i></div>
+      <div class="fdots" style="justify-content:center"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div>
+      <div class="ok-sub">已记录并上报 · 剩余尝试 3 次</div></div>
+      <div class="strip">抓拍留证 · 已写入日志并上报</div>
+    </div></div><div class="gcap"><b>⑤ 通行拒绝</b><span>5 点阵显示失败进度<br>fail_count 写 NVS 重启不清零</span></div></div>
+    <div class="gslot"><div class="gframe"><div class="screen on sfull" style="background:#8a5a00">
+      <div class="sbar" style="color:#f0e2c8"><span>16:20</span><span class="lk">已上锁</span></div>
+      <div class="zone"><div class="padlock"><i class="shk"></i><i class="body"></i></div>
+      <div class="ok-name" style="font-size:20px">尝试次数过多</div>
+      <div style="font-size:42px;font-weight:700;margin-top:6px">42<span style="font-size:15px;font-weight:400"> s</span></div>
+      <div class="ok-sub">预计 16:22 解除</div></div>
+      <div class="strip">DOOR_LOCKOUT · GD32 侧计时</div>
+    </div></div><div class="gcap"><b>⑥ 锁定中</b><span>秒级倒计时 + 真实解除时刻<br>期间拒绝一切认证请求</span></div></div>
+    <div class="gslot"><div class="gframe"><div class="screen on slight">
+      <div class="lhead"><span>管理员菜单</span><span style="font-size:11px;font-weight:400">admin01</span></div>
+      <div class="litem"><span class="ic">＋</span>录入人脸<small>3 帧 · 2s</small><span class="arr">›</span></div>
+      <div class="litem"><span class="ic">－</span>删除成员<span class="arr">›</span></div>
+      <div class="litem"><span class="ic">≡</span>查看通行记录<small>64 条</small><span class="arr">›</span></div>
+      <div class="litem"><span class="ic">⚙</span>阈值与锁定设置<span class="arr">›</span></div>
+      <div class="lfoot">v1.0 · 人脸库 1/32</div>
+    </div></div><div class="gcap"><b>⑦ 管理菜单</b><span>长按 800ms 进入 · lv_list<br>身份徽标 admin01 常显</span></div></div>
+    <div class="gslot"><div class="gframe"><div class="screen on slight">
+      <div class="lhead"><span>录入人脸</span><span>2/3</span></div>
+      <div class="pv" style="background:#101720"><div class="facebox"><i class="fb tl"></i><i class="fb tr"></i><i class="fb bl"></i><i class="fb br"></i></div></div>
+      <div class="info"><div class="t1">保持正对，缓慢左右转头</div><div class="t2" style="margin-bottom:9px">embedding 均值 → NVS</div><div class="bar"><i style="width:66%"></i></div></div>
+    </div></div><div class="gcap"><b>⑧ 录入进度</b><span>3 帧 embedding 取均值<br>写入 face_XX（512B int8）</span></div></div>
+    <div class="gslot"><div class="gframe"><div class="screen on slight">
+      <div class="lhead"><span>通行记录</span><span style="font-size:11px;font-weight:400">最近 64 条</span></div>
+      <div class="rrow"><span class="who">张三</span><span class="when">今日 16:14 · 人脸</span><span class="st g">通行</span></div>
+      <div class="rrow"><span class="who">未知</span><span class="when">今日 08:47 · 刷脸</span><span class="st r">拒绝</span></div>
+      <div class="rrow"><span class="who">李四</span><span class="when">昨日 18:31 · 密码</span><span class="st g">通行</span></div>
+      <div class="lfoot">AT24C02 环形日志 · 掉电不丢</div>
+    </div></div><div class="gcap"><b>⑨ 通行记录</b><span>lv_table · 结果 chip 着色<br>数据源 GD32 EEPROM 日志</span></div></div>
+  </div>
+</div></section>
+
+<!-- ================= 设计规范 ================= -->
+<section id="token"><div class="wrap">
+  <h2><span class="no">03</span>设计令牌（可直接翻译为代码）</h2>
+  <p class="lead">所有视觉参数收敛为四张表。实现时集中定义在 <code>ui_theme.h</code>，任何界面不得出现字面色值——保证后续调主题只改一处。</p>
+  <div class="grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card"><h3 style="margin-top:0">色彩令牌</h3>
+      <table>
+        <tr><th>令牌</th><th>值</th><th>用途</th></tr>
+        <tr><td><span class="sw" style="background:#0d1420"></span>预览底</td><td><code>0x0D1420</code></td><td>摄像头预览区背景</td></tr>
+        <tr><td><span class="sw" style="background:#1e8e4f"></span>成功</td><td><code>0x1E8E4F</code></td><td>通行成功整屏 / 结果 chip</td></tr>
+        <tr><td><span class="sw" style="background:#c4322a"></span>拒绝</td><td><code>0xC4322A</code></td><td>拒绝整屏 / 失败点阵</td></tr>
+        <tr><td><span class="sw" style="background:#b26a00"></span>锁定</td><td><code>0xB26A00</code></td><td>锁定屏 / 警示</td></tr>
+        <tr><td><span class="sw" style="background:#185fa5"></span>品牌</td><td><code>0x185FA5</code></td><td>菜单头 / 进度条 / 主按钮</td></tr>
+        <tr><td><span class="sw" style="background:#4ce08a"></span>检测框</td><td><code>0x4CE08A</code></td><td>人脸角框 / 扫描线</td></tr>
+        <tr><td><span class="sw" style="background:#ffffff"></span>信息卡</td><td><code>0xFFFFFF</code></td><td>信息卡 / 浅色屏底 #F4F6F9</td></tr>
+        <tr><td><span class="sw" style="background:#1c2330"></span>文字主</td><td><code>0x1C2330</code></td><td>标题 / 正文（次 #5C6675）</td></tr>
+      </table>
+    </div>
+    <div class="card"><h3 style="margin-top:0">字体与布局</h3>
+      <table>
+        <tr><th>项</th><th>规范</th><th>说明</th></tr>
+        <tr><td>正文字库</td><td>思源黑体 16px（现有）</td><td>全 UI 默认</td></tr>
+        <tr><td>结果大字</td><td><b>新增 32px 子集字库</b></td><td>仅姓名/常用词 ~40 字，约 40KB；LVGL 不支持位图缩放</td></tr>
+        <tr><td>信息卡标题</td><td>16px / 600</td><td>每屏唯一焦点</td></tr>
+        <tr><td>辅助文字</td><td>12px / #5C6675</td><td>说明行</td></tr>
+        <tr><td>圆角</td><td>信息卡 16 / 列表项 12 / 芯片 999</td><td>lv_obj_style radius</td></tr>
+        <tr><td>间距</td><td>4 的倍数：8 / 12 / 16 / 24</td><td>信息卡内边距 14–16</td></tr>
+        <tr><td>状态栏</td><td>高 30px，时间左 / 锁态右</td><td>深色屏用反白，浅色屏用主文字色</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="note"><b>户外可读性约束：</b>结果页整屏铺色 + 26px 大字，保证 1.5m 外可读；信息卡白底黑字对比度 &gt; 7:1；禁用细字重（IPS 屏低灰阶发虚）。</div>
+</div></section>
+
+<!-- ================= 动效 ================= -->
+<section id="motion"><div class="wrap">
+  <h2><span class="no">04</span>动效规范</h2>
+  <p class="lead">全部动效收敛为 5 个，时长与缓动固定。LVGL 侧统一用 <code>lv_anim</code> / <code>lv_scr_load_anim</code> 实现，禁止各界面自定义时长。</p>
+  <div class="card">
+    <table>
+      <tr><th>动效</th><th>参数</th><th>LVGL 实现</th></tr>
+      <tr><td>界面切换</td><td>200ms 淡入（无位移）</td><td><code>lv_scr_load_anim(scr, LV_SCR_LOAD_ANIM_FADE_IN, 200, 0, true)</code></td></tr>
+      <tr><td>成功勾描画</td><td>300ms · 延迟 150ms · ease-out</td><td>lv_line + <code>lv_anim_path_ease_out</code> 改 line_points，或预渲染 5 帧序列</td></tr>
+      <tr><td>角框脉冲 / 扫描线</td><td>1.2s / 1.4s · 无限循环</td><td>lv_anim 设 <code>LV_ANIM_REPEAT_INFINITE</code> 改 opacity/y</td></tr>
+      <tr><td>呼吸 LED / 倒计时条</td><td>2s 循环 / 线性推进</td><td>lv_anim 改 opacity / lv_bar set_value + lv_timer</td></tr>
+      <tr><td>toast 提示</td><td>250ms 淡入 · 1.8s 后淡出</td><td>lv_obj + opacity anim + lv_timer 回收</td></tr>
+    </table>
+  </div>
+</div></section>
+
+<!-- ================= LVGL 映射 ================= -->
+<section id="map"><div class="wrap">
+  <h2><span class="no">05</span>界面 → LVGL 控件映射与状态机接线</h2>
+  <div class="grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card"><h3 style="margin-top:0">控件映射</h3>
+      <table>
+        <tr><th>元素</th><th>LVGL 控件</th></tr>
+        <tr><td>摄像头预览</td><td><code>lv_canvas</code>（GC0308 帧拷贝，双缓冲，常驻不销毁）</td></tr>
+        <tr><td>人脸角框</td><td>4 × <code>lv_line</code> 叠加 canvas，改坐标跟踪框</td></tr>
+        <tr><td>状态栏</td><td>3 × <code>lv_label</code> + 顶栏 <code>lv_obj</code>（h=30）</td></tr>
+        <tr><td>信息卡</td><td><code>lv_obj</code>（radius 16）+ <code>lv_label</code></td></tr>
+        <tr><td>进度 / 倒计时</td><td><code>lv_bar</code>（挑战/录入）、<code>lv_arc</code>（落锁 2s）</td></tr>
+        <tr><td>菜单 / 列表</td><td><code>lv_list</code> + <code>lv_btn</code></td></tr>
+        <tr><td>通行记录</td><td><code>lv_table</code>（2 列，chip 用 cell 样式着色）</td></tr>
+        <tr><td>抓拍缩略图</td><td><code>lv_img</code>（GC0308 BMP 缩放 96×72，RAM 缓存）</td></tr>
+      </table>
+    </div>
+    <div class="card"><h3 style="margin-top:0">状态机 → 界面接线</h3>
+      <table>
+        <tr><th>事件 / 状态</th><th>目标界面</th></tr>
+        <tr><td>IDLE（无触摸 5s）</td><td>① 待机</td></tr>
+        <tr><td><code>DET stable ×3</code></td><td>② 识别中</td></tr>
+        <tr><td>识别命中 → 挑战开始</td><td>③ 活体挑战</td></tr>
+        <tr><td>GRANTED（UNLOCK_ACK）</td><td>④ 成功 → 2s 后回 ①</td></tr>
+        <tr><td>DENIED（原因 / fail_count）</td><td>⑤ 拒绝 → 2.6s 后回 ①</td></tr>
+        <tr><td>DOOR_LOCKOUT</td><td>⑥ 锁定（GD32 计时经 STATE 帧同步）</td></tr>
+        <tr><td>长按 800ms + 管理验证</td><td>⑦ 菜单 → ⑧ 录入 / ⑨ 记录</td></tr>
+        <tr><td>链路故障（心跳 3 次丢失）</td><td>信息卡黄条提示，界面不切换</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="note"><b>性能约束：</b>预览 canvas 拷贝与识别推理分属核 0 / 核 1，UI 每帧 LVGL 锁内工作 &lt; 5ms（超时打印告警）；界面切换只改信息卡内容与 canvas 叠加层，预览层零重建。</div>
+</div></section>
+
+<footer><div class="wrap">
+  <b style="color:#5c6675">UI 2.0 相对 v1 的变更</b>
+  <p style="margin-top:8px;max-width:860px">① 设计令牌化，色值/字号/动效全部有规范且映射到 LVGL API；② 预览/信息分层版式替代整屏深色；③ 结果页补抓拍留证与失败点阵；④ 新增通行记录页（lv_table）；⑤ 大字 32px 子集字库方案；⑥ 交互原型带状态机与固件格式日志，可直接用于演示彩排。</p>
+  <p style="margin-top:10px">相关文档：<a href="项目总览.html">项目总览</a> · 双板门禁方案评审.md · 硬件说明.md — 2026-10-31</p>
+</div></footer>
+
+<script>
+(function(){
+  var S={state:'IDLE',fail:0,timers:[],lockIv:null,autoT:null};
+  window.$=function(id){return document.getElementById(id)};
+  window.show=function(id){document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('on')});$(id).classList.add('on')};
+  function setState(x){S.state=x;$('statechip').textContent=x}
+  function log(line,cls){var d=document.createElement('div');if(cls)d.className=cls;
+    var t=new Date();d.textContent=t.toTimeString().slice(0,8)+'.'+String(t.getMilliseconds()).padStart(3,'0')+'  '+line;
+    var box=$('evtlog');box.insertBefore(d,box.firstChild);while(box.children.length>40)box.removeChild(box.lastChild);}
+  function later(fn,ms){var t=setTimeout(fn,ms);S.timers.push(t);return t}
+  function clearAll(){S.timers.forEach(clearTimeout);S.timers=[];if(S.lockIv){clearInterval(S.lockIv);S.lockIv=null}}
+  function fmtT(ms){var d=new Date(ms);return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)}
+  setInterval(function(){$('clk').textContent=fmtT(Date.now())},1000);
+  function ident(){return document.querySelector('input[name=ident]:checked').value}
+  function runBar(id,ms,cb){var el=$(id);el.style.transition='none';el.style.width='0%';void el.offsetWidth;
+    el.style.transition='width '+ms+'ms linear';el.style.width='100%';later(cb,ms+30)}
+  function updateFail(){$('failn').textContent=S.fail;var dots=$('fdots').children;
+    for(var i=0;i<5;i++)dots[i].className=i<S.fail?'on':'';}
+
+  window.startScan=function(){
+    if(S.state!=='IDLE'&&S.state!=='DENIED-IDLE')return;
+    clearAll();setState('SCANNING');show('scr-scan');
+    log('EVT  DET stable x3 -> face_task','b');
+    later(function(){
+      var id=ident();
+      if(id==='stranger'){log('MATCH none  sim=-  -> DENIED(陌生人)','r');deny('陌生人');return}
+      setState('LIVENESS');show('scr-live');
+      var ch=['请向左转头','请向右转头','请靠近一点'][Math.floor(Math.random()*3)];
+      $('live-text').textContent=ch;$('live-arr').textContent=ch.indexOf('左')>=0?'◀':(ch.indexOf('右')>=0?'▶':'⤢');
+      log('LIVENESS challenge: '+ch,'b');
+      runBar('live-fill',2000,function(){
+        if(id==='liveness_fail'){log('LIVENESS FAIL (timeout) -> DENIED','r');deny('活体失败')}
+        else{log('MATCH id=07 sim=0.92 liveness=PASS','g');granted()}
+      });
+    },1300);
+  };
+  function granted(){
+    setState('GRANTED');show('scr-ok');
+    log('TX  UNLOCK_REQ ts+nonce+HMAC','g');
+    later(function(){log('RX  UNLOCK_ACK ok -> relay 2s','g')},320);
+    var left=2;$('ok-strip').textContent='门已开 · 2s 后自动落锁';
+    var iv=setInterval(function(){left--;$('ok-strip').textContent='门已开 · '+left+'s 后自动落锁';
+      if(left<=0){clearInterval(iv);setState('IDLE');show('scr-idle');log('RELock -> IDLE')}},1000);
+    S.timers.push(iv);
+  }
+  function deny(reason){
+    S.fail++;updateFail();setState('DENIED');show('scr-no');
+    $('rs1').className=reason==='陌生人'?'on':'';$('rs2').className=reason==='活体失败'?'on':'';
+    $('no-sub').textContent='已记录并上报 · 剩余尝试 '+(5-S.fail)+' 次';
+    log('DENIED '+reason+'  fail='+S.fail+'/5','r');
+    later(function(){
+      if(S.fail>=5){startLockout()}
+      else{setState('DENIED-IDLE');show('scr-idle')}
+    },2600);
+  }
+  function startLockout(){
+    setState('LOCKOUT');show('scr-lock');
+    var left=60,end=Date.now()+60000;$('lock-secs').textContent=left;$('lock-eta').textContent='预计 '+fmtT(end)+' 解除';
+    log('DOOR_LOCKOUT 60s','r');
+    S.lockIv=setInterval(function(){left--;if(left<=0){clearInterval(S.lockIv);S.lockIv=null;S.fail=0;updateFail();
+      log('LOCKOUT expire -> IDLE');setState('IDLE');show('scr-idle')}else{$('lock-secs').textContent=left}},1000);
+  }
+  window.openMenu=function(){
+    if(S.state!=='IDLE'&&S.state!=='DENIED-IDLE')return;
+    clearAll();setState('MENU');show('scr-menu');log('ADMIN auth ok -> menu','b');
+  };
+  window.doEnroll=function(){
+    setState('ENROLL');show('scr-enroll');log('ENROLL start (3 frames)','b');
+    var i=0;function step(){i++;$('en-n').textContent=i+'/3';$('en-fill').style.width=(i/3*100)+'%';
+      if(i<3){later(step,650)}else{later(function(){toast('录入成功 → face_08');log('ENROLL ok -> NVS face_08','g');show('scr-menu');setState('MENU')},500)}}
+    $('en-fill').style.transition='none';$('en-fill').style.width='0%';void $('en-fill').offsetWidth;
+    $('en-fill').style.transition='width .6s linear';step();
+  };
+  window.toast=function(msg){var t=$('toast');t.textContent=msg;t.classList.add('on');
+    later(function(){t.classList.remove('on')},1800)};
+  window.resetAll=function(){clearAll();S.fail=0;updateFail();setState('IDLE');show('scr-idle');log('RESET','dim')};
+  window.toggleAuto=function(on){
+    if(on){S.autoT=setInterval(function(){if(S.state==='IDLE')startScan()},4500);startScan()}
+    else{clearInterval(S.autoT)}};
+
+  /* 长按 800ms 进菜单（待机页） */
+  var pressT=null;var idleScreen=$('scr-idle');
+  function pressStart(e){if(S.state!=='IDLE')return;pressT=setTimeout(function(){pressT=null;openMenu()},800)}
+  function pressEnd(){if(pressT){clearTimeout(pressT);pressT=null}}
+  idleScreen.addEventListener('mousedown',pressStart);idleScreen.addEventListener('touchstart',pressStart);
+  ['mouseup','mouseleave','touchend','touchmove'].forEach(function(ev){idleScreen.addEventListener(ev,pressEnd)});
+
+  /* 初始日志 */
+  log('system boot: tasks up, link HEARTBEAT ok','dim');
+  updateFail();
+})();
+</script>
+</body>
+</html>
