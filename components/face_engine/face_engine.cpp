@@ -3,19 +3,33 @@
 #include <string.h>
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "esp_vfs_fat.h"
+#include "esp_partition.h"
 #include "human_face_detect.hpp"
+#include "human_face_recognition.hpp"
 #include "dl_image.hpp"
 
 static const char *TAG = "face_engine";
 
 static HumanFaceDetect *s_det = nullptr;
+static HumanFaceRecognizer *s_recog = nullptr;
 static uint8_t *s_rgb888 = nullptr;
 static int s_rgb888_px = 0;
 
-/* 检测前统一转 RGB888：摄像头 RGB565 是大端，直接喂给 esp-dl 容易踩字节序问题 */
-static uint8_t *to_rgb888(const uint8_t *src, int w, int h)
+/* RGB565（大端）→ RGB888，**同时逆时针转 90°**
+ *
+ * 为什么要转：传感器在板上是横装的、屏幕是竖屏，摄像头原始帧里的脸是躺着的。
+ * 检测器还能找到脸，但关键点对齐会偏，识别相似度从 0.8+ 掉到 0.69~0.72
+ * （2026-10-31 实测 face_lvgl 横屏用时更高）。
+ * 转正后喂模型，同时检测框坐标直接就是竖屏预览坐标，UI 侧不用再做反变换。
+ *
+ * 映射与 bsp_camera_blit(cw=false) 完全一致：dest(x,y) ← src(w-1-y, x) */
+static uint8_t *to_rgb888_rot(const uint8_t *src, int w, int h)
 {
-    const int px = w * h;
+    const int ow = h;          /* 旋转后宽高互换：320x240 → 240x320 */
+    const int oh = w;
+    const int px = ow * oh;
+
     if (s_rgb888 == nullptr || s_rgb888_px != px) {
         if (s_rgb888) heap_caps_free(s_rgb888);
         s_rgb888 = (uint8_t *)heap_caps_malloc((size_t)px * 3, MALLOC_CAP_SPIRAM);
@@ -23,16 +37,31 @@ static uint8_t *to_rgb888(const uint8_t *src, int w, int h)
     }
     if (s_rgb888 == nullptr) return nullptr;
 
-    for (int i = 0; i < px; i++) {
-        uint16_t v = (uint16_t)((src[2 * i] << 8) | src[2 * i + 1]);   /* 大端 */
-        uint8_t r = (v >> 11) & 0x1F;
-        uint8_t g = (v >> 5) & 0x3F;
-        uint8_t b = v & 0x1F;
-        s_rgb888[3 * i + 0] = (uint8_t)((r << 3) | (r >> 2));
-        s_rgb888[3 * i + 1] = (uint8_t)((g << 2) | (g >> 4));
-        s_rgb888[3 * i + 2] = (uint8_t)((b << 3) | (b >> 2));
+    for (int y = 0; y < oh; y++) {
+        uint8_t *d = s_rgb888 + (size_t)y * ow * 3;
+        for (int x = 0; x < ow; x++) {
+            int sx = w - 1 - y;
+            int sy = x;
+            const uint8_t *s = src + ((size_t)sy * w + sx) * 2;
+            uint16_t v = (uint16_t)((s[0] << 8) | s[1]);   /* 大端 */
+            uint8_t r = (v >> 11) & 0x1F;
+            uint8_t g = (v >> 5) & 0x3F;
+            uint8_t b = v & 0x1F;
+            *d++ = (uint8_t)((r << 3) | (r >> 2));
+            *d++ = (uint8_t)((g << 2) | (g >> 4));
+            *d++ = (uint8_t)((b << 3) | (b >> 2));
+        }
     }
     return s_rgb888;
+}
+
+/* 组装模型输入：旋转后的尺寸 */
+static void fill_img(dl::image::img_t &img, const uint8_t *buf, int w, int h)
+{
+    img.data = to_rgb888_rot(buf, w, h);
+    img.width = (uint16_t)h;    /* 旋转后宽 = 原高 */
+    img.height = (uint16_t)w;
+    img.pix_type = dl::image::DL_IMAGE_PIX_TYPE_RGB888;
 }
 
 extern "C" esp_err_t face_engine_init(void)
@@ -54,14 +83,9 @@ extern "C" int face_engine_detect(const uint8_t *buf, int w, int h, face_box_t *
         return 0;
     }
 
-    uint8_t *rgb = to_rgb888(buf, w, h);
-    if (rgb == nullptr) return 0;
-
     dl::image::img_t img = {};
-    img.data = rgb;
-    img.width = (uint16_t)w;
-    img.height = (uint16_t)h;
-    img.pix_type = dl::image::DL_IMAGE_PIX_TYPE_RGB888;
+    fill_img(img, buf, w, h);
+    if (img.data == nullptr) return 0;
 
     std::list<dl::detect::result_t> &res = s_det->run(img);
 
@@ -76,4 +100,116 @@ extern "C" int face_engine_detect(const uint8_t *buf, int w, int h, face_box_t *
         n++;
     }
     return n;
+}
+
+/* ---------------- 识别 / 人脸库 ---------------- */
+static esp_err_t mount_storage(void)
+{
+    static bool mounted = false;
+    if (mounted) return ESP_OK;
+
+    const esp_partition_t *part = esp_partition_find_first(ESP_PARTITION_TYPE_DATA,
+                                                          ESP_PARTITION_SUBTYPE_ANY, "storage");
+    if (part == nullptr) {
+        ESP_LOGE(TAG, "storage 分区不存在（检查 partitions.csv）");
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    esp_vfs_fat_mount_config_t cfg = {};
+    cfg.format_if_mount_failed = true;
+    cfg.max_files = 4;
+    cfg.allocation_unit_size = 4096;
+
+    wl_handle_t wl = WL_INVALID_HANDLE;
+    esp_err_t err = esp_vfs_fat_spiflash_mount_rw_wl("/storage", "storage", &cfg, &wl);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "挂载 /storage 失败: %s", esp_err_to_name(err));
+        return err;
+    }
+    mounted = true;
+    ESP_LOGI(TAG, "/storage 挂载成功");
+    return ESP_OK;
+}
+
+extern "C" esp_err_t face_recog_init(void)
+{
+    face_engine_init();
+    if (s_recog == nullptr) {
+        esp_err_t err = mount_storage();
+        if (err != ESP_OK) return err;
+        s_recog = new HumanFaceRecognizer("/storage/face.db", HumanFaceFeat::MFN_S8_V1, false);
+        ESP_LOGI(TAG, "MFN_S8_V1 ready, %d faces enrolled", (int)s_recog->get_num_feats());
+    }
+    return ESP_OK;
+}
+
+/* 检测一次并返回 img + 结果列表（enroll/recognize 都要用同一份） */
+static bool detect_full(const uint8_t *buf, int w, int h,
+                        dl::image::img_t &img, std::list<dl::detect::result_t> **res)
+{
+    if (s_det == nullptr || buf == nullptr) return false;
+
+    fill_img(img, buf, w, h);
+    if (img.data == nullptr) return false;
+
+    *res = &s_det->run(img);
+    return !(*res)->empty();
+}
+
+extern "C" esp_err_t face_recog_enroll(const uint8_t *buf, int w, int h)
+{
+    if (face_recog_init() != ESP_OK) return ESP_FAIL;
+
+    dl::image::img_t img = {};
+    std::list<dl::detect::result_t> *res = nullptr;
+    if (!detect_full(buf, w, h, img, &res)) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    esp_err_t err = s_recog->enroll(img, *res);
+    if (err == ESP_OK) {
+        ESP_LOGW(TAG, "enroll ok, total %d", (int)s_recog->get_num_feats());
+    } else {
+        ESP_LOGW(TAG, "enroll fail: %s", esp_err_to_name(err));
+    }
+    return err;
+}
+
+extern "C" esp_err_t face_recog_recognize(const uint8_t *buf, int w, int h,
+                                          char *name_out, size_t name_len, float *score_out)
+{
+    if (face_recog_init() != ESP_OK) return ESP_FAIL;
+
+    dl::image::img_t img = {};
+    std::list<dl::detect::result_t> *res = nullptr;
+    if (!detect_full(buf, w, h, img, &res)) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    auto out = s_recog->recognize(img, *res);
+    /* result_t = {id, similarity}；id == UINT16_MAX 表示陌生人不入库 */
+    for (auto &r : out) {
+        if (r.id != UINT16_MAX) {
+            if (name_out && name_len) {
+                snprintf(name_out, name_len, "Person_%u", (unsigned)r.id);
+            }
+            if (score_out) *score_out = r.similarity;
+            ESP_LOGW(TAG, "recognize: id=%u sim=%.2f", (unsigned)r.id, r.similarity);
+            return ESP_OK;
+        }
+    }
+    return ESP_ERR_NOT_FOUND;
+}
+
+extern "C" esp_err_t face_recog_clear(void)
+{
+    if (face_recog_init() != ESP_OK) return ESP_FAIL;
+    esp_err_t err = s_recog->clear_all_feats();
+    ESP_LOGW(TAG, "cleared, left %d", (int)s_recog->get_num_feats());
+    return err;
+}
+
+extern "C" int face_recog_count(void)
+{
+    return s_recog ? (int)s_recog->get_num_feats() : 0;
 }

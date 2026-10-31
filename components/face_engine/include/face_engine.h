@@ -9,7 +9,9 @@ extern "C" {
 #define FACE_MAX_BOXES  4
 
 typedef struct {
-    int   x1, y1, x2, y2;   /* 摄像头原始帧坐标（320x240） */
+    /* 坐标已转成竖屏空间（240x320），与 LVGL 预览图像坐标一一对应，
+     * UI 侧直接用、不需要再做 90° 反变换 */
+    int   x1, y1, x2, y2;
     float score;
 } face_box_t;
 
@@ -25,6 +27,26 @@ esp_err_t face_engine_init(void);
  * @return 检测到的人脸数（0~max_boxes）
  */
 int face_engine_detect(const uint8_t *buf, int w, int h, face_box_t *out, int max_boxes);
+
+/* ---------------- 识别 / 人脸库 ----------------
+ * 人脸库是 FAT 分区（storage）上的 /storage/face.db，掉电不丢。
+ * 录一个人 → Person_0，再录一个 → Person_1 … */
+
+/** 挂载 /storage 并加载 MFN_S8_V1 识别模型（首次调用可能耗时） */
+esp_err_t face_recog_init(void);
+
+/** 把当前帧里检测到的人脸注册进库；ESP_ERR_NOT_FOUND = 画面里没人脸 */
+esp_err_t face_recog_enroll(const uint8_t *buf, int w, int h);
+
+/** 识别当前帧；ESP_OK = 命中（name_out/score_out 有效），ESP_ERR_NOT_FOUND = 陌生人/无人脸 */
+esp_err_t face_recog_recognize(const uint8_t *buf, int w, int h,
+                               char *name_out, size_t name_len, float *score_out);
+
+/** 清空人脸库 */
+esp_err_t face_recog_clear(void);
+
+/** 库里的人数 */
+int face_recog_count(void);
 
 #ifdef __cplusplus
 }

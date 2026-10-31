@@ -1,4 +1,4 @@
 ## IDF Component Manager Manifest File
-## 识别模型（human_face_recognition）在 M5 加入
 dependencies:
   espressif/human_face_detect: "*"
+  espressif/human_face_recognition: "*"
