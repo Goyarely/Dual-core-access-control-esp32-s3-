@@ -156,6 +156,54 @@ static bool detect_full(const uint8_t *buf, int w, int h,
     return !(*res)->empty();
 }
 
+/* ---------------- 成员枚举 ----------------
+ * 库文件本身就是一张按 id 排的稀疏表：
+ *   [database_meta 6B][记录 id=1][记录 id=2]...
+ *   记录 = uint16 id + feat_len * float32     （id==0 表示该槽已删除）
+ * 所以不自己维护索引，直接读文件最可靠——
+ * 之前用"自建索引"在清库/删除后 id 必然错位，导致删除总是 ESP_FAIL。 */
+#define DB_FILE "/storage/face.db"
+
+typedef struct {
+    uint16_t num_feats_total;
+    uint16_t num_feats_valid;
+    uint16_t feat_len;
+} db_meta_t;
+
+extern "C" int face_members(uint16_t *ids, int max)
+{
+    if (face_recog_init() != ESP_OK) return 0;
+
+    FILE *f = fopen(DB_FILE, "rb");
+    if (!f) return 0;
+
+    db_meta_t m = {};
+    if (fread(&m, sizeof(m), 1, f) != 1 || m.feat_len == 0 || m.feat_len > 4096) {
+        fclose(f);
+        return 0;
+    }
+
+    const long rec = sizeof(uint16_t) + (long)m.feat_len * sizeof(float);
+    int n = 0;
+    for (uint16_t i = 0; i < m.num_feats_total && n < max; i++) {
+        uint16_t id = 0;
+        if (fseek(f, (long)sizeof(m) + rec * i, SEEK_SET) != 0) break;
+        if (fread(&id, sizeof(id), 1, f) != 1) break;
+        if (id != 0) ids[n++] = id;
+    }
+    fclose(f);
+    return n;
+}
+
+extern "C" esp_err_t face_delete_member(uint16_t id)
+{
+    if (face_recog_init() != ESP_OK) return ESP_FAIL;
+    esp_err_t err = s_recog->delete_feat(id);
+    ESP_LOGW(TAG, "delete id=%u -> %s (left %d)", (unsigned)id, esp_err_to_name(err),
+             (int)s_recog->get_num_feats());
+    return err;
+}
+
 extern "C" esp_err_t face_recog_enroll(const uint8_t *buf, int w, int h)
 {
     if (face_recog_init() != ESP_OK) return ESP_FAIL;
@@ -183,7 +231,9 @@ extern "C" esp_err_t face_recog_recognize(const uint8_t *buf, int w, int h,
     dl::image::img_t img = {};
     std::list<dl::detect::result_t> *res = nullptr;
     if (!detect_full(buf, w, h, img, &res)) {
-        return ESP_ERR_NOT_FOUND;
+        /* 这一帧压根没人脸：和"陌生人"必须区分开，
+         * 否则画面一抖就被记一次失败，5 次直接锁门 */
+        return ESP_ERR_INVALID_STATE;
     }
 
     auto out = s_recog->recognize(img, *res);

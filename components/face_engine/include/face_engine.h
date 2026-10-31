@@ -45,8 +45,20 @@ esp_err_t face_recog_recognize(const uint8_t *buf, int w, int h,
 /** 清空人脸库 */
 esp_err_t face_recog_clear(void);
 
-/** 库里的人数 */
+/** 库里的人数（有效特征数） */
 int face_recog_count(void);
+
+/**
+ * @brief 列出已登记成员的 id（升序）
+ *
+ * 识别库的 id 规则是 num_feats_total+1、只增不减，库本身不提供枚举接口，
+ * 所以在 /storage/members.bin 里自己维护一份 id 索引。
+ * @return 实际写入 ids 的个数
+ */
+int face_members(uint16_t *ids, int max);
+
+/** 删除指定 id 的成员（同时更新索引文件） */
+esp_err_t face_delete_member(uint16_t id);
 
 #ifdef __cplusplus
 }

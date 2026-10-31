@@ -64,3 +64,10 @@
 #define FAIL_MAX            5      /* 连续失败次数上限 */
 #define LOCKOUT_SEC         60     /* 超限锁定秒数 */
 #define UNLOCK_SEC          2      /* 继电器吸合时长 */
+#define MEMBER_MAX          64     /* 人脸库容量 */
+#define ENROLL_FRAMES       10     /* 录入采集帧数：3 帧太快，脸还没摆正就采完了 */
+#define ENROLL_MIN_FACE_W   80     /* 采集时人脸框最小宽度（竖屏 240 宽空间），太小视为没凑近 */
+#define ENROLL_CENTER_TOL   70     /* 框中心离画面中心的最大偏差 */
+
+/* 管理员密码：目前编译期固定，M13 交付前改成 NVS 存储 + 可修改（写进 docs） */
+#define ADMIN_PASSWORD      "1234"

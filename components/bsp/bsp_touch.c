@@ -8,7 +8,8 @@
 #include "app_config.h"
 #include <stdlib.h>
 
-#define FT6X36_REG_G_MODE  0xA4   /* 0=轮询(不驱动 INT)  1=触发(中断) */
+#define FT6X36_REG_G_MODE   0xA4   /* 0=轮询(不驱动 INT)  1=触发(中断) */
+#define FT6X36_REG_POINTRATE 0x88  /* 扫描周期，驱动默认写 0x0E(约14ms)，这里提到 0x05 */
 
 static const char *TAG = "bsp_touch";
 
@@ -68,6 +69,11 @@ esp_err_t bsp_touch_init(void)
     uint8_t g_mode = 0;
     ESP_RETURN_ON_ERROR(esp_lcd_panel_io_tx_param(s_tp_io, FT6X36_REG_G_MODE, &g_mode, 1),
                         TAG, "set g_mode");
+
+    /* 提高触摸扫描率：默认 0x0E 约 10Hz，点一下要等 100ms 才被读到 */
+    uint8_t rate = 0x05;
+    ESP_RETURN_ON_ERROR(esp_lcd_panel_io_tx_param(s_tp_io, FT6X36_REG_POINTRATE, &rate, 1),
+                        TAG, "set point rate");
 
     const lvgl_port_touch_cfg_t touch_cfg = {
         .disp = bsp_lvgl_display(),

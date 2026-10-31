@@ -1,8 +1,9 @@
 idf_component_register(
     SRCS "main.c"
+         "ui/ui_main.c"
          "fonts/lv_font_misans_16.c"
          "fonts/lv_font_misans_24.c"
-    INCLUDE_DIRS "." "fonts"
+    INCLUDE_DIRS "." "fonts" "ui"
     REQUIRES bsp lvgl app_config face_engine esp_psram esp_hw_support esp_timer
 )
 
