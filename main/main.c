@@ -65,7 +65,18 @@ static void camera_task(void *arg)
         ui_frame_feed(n, (n > 0) ? &boxes[0] : NULL);
         bool need_recog = ui_take_recognize_request();
         bool need_enroll = ui_take_enroll_request();
+        bool need_pw_unlock = ui_take_pw_unlock_request();
         bsp_lvgl_unlock();
+
+        /* 触摸屏密码开锁：和刷脸走同一条请求路径，由 GD32 决定开不开 */
+        if (need_pw_unlock) {
+            uint8_t remain = 0;
+            int ur = link_unlock_request(LINK_REASON_PASSWORD, &remain);
+            ESP_LOGI(TAG, "密码开锁结果=%d remain=%u", ur, remain);
+            bsp_lvgl_lock();
+            ui_unlock_result(ur);
+            bsp_lvgl_unlock();
+        }
 
         if (need_recog) {
             char name[24] = {0};

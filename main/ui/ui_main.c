@@ -91,6 +91,9 @@ static void ui_hold(ui_state_t target, uint32_t ms)
 }
 
 static char s_pw[8];
+static bool s_auth_for_unlock;          /* 密码页用途：false=进管理员菜单, true=开门 */
+static volatile bool s_pw_unlock_req;   /* 密码校验通过，等待 main 发开锁请求 */
+static lv_obj_t *s_lbl_auth_title;
 static int s_pw_len;
 static bool s_list_delete_mode;
 static uint16_t s_list_ids[MEMBER_MAX];   /* 第 i 行对应的真实 id */
@@ -149,6 +152,15 @@ static lv_obj_t *make_btn(lv_obj_t *parent, const char *txt, int x, int y, int w
 /* ---------------- 长按进管理员验证 ---------------- */
 static uint32_t s_press_tick;
 
+static void pw_entry_cb(lv_event_t *e)
+{
+    (void)e;
+    s_auth_for_unlock = true;
+    s_pw_len = 0;
+    s_pw[0] = '\0';
+    ui_set_state(UI_AUTH);
+}
+
 static void scr_press_cb(lv_event_t *e)
 {
     lv_event_code_t c = lv_event_get_code(e);
@@ -156,6 +168,7 @@ static void scr_press_cb(lv_event_t *e)
         s_press_tick = lv_tick_get();
     } else if (c == LV_EVENT_RELEASED) {
         if (s_state == UI_STANDBY && lv_tick_elaps(s_press_tick) > HOLD_MENU_MS) {
+            s_auth_for_unlock = false;      /* 长按 = 进管理员 */
             s_pw_len = 0;
             s_pw[0] = '\0';
             ui_set_state(UI_AUTH);
@@ -183,7 +196,15 @@ static void key_cb(lv_event_t *e)
         if (strcmp(s_pw, ADMIN_PASSWORD) == 0) {
             s_pw_len = 0;
             s_pw[0] = '\0';
-            ui_set_state(UI_MENU);
+            if (s_auth_for_unlock) {
+                /* 密码开锁：交给 main 发请求，结果由 ui_unlock_result() 回填 */
+                s_pw_unlock_req = true;
+                lv_label_set_text(s_lbl_ok_name, "密码开锁");
+                lv_label_set_text(s_lbl_ok_sub, "远程请求中");
+                ui_set_state(UI_SUCCESS);
+            } else {
+                ui_set_state(UI_MENU);
+            }
             return;
         }
         s_pw_len = 0;
@@ -384,6 +405,10 @@ void ui_init(uint8_t *preview_buf, int preview_w, int preview_h)
     s_lbl_hint = make_label(s_scr, "请面向屏幕", &lv_font_misans_16, 0x7d8ea0);
     lv_obj_set_pos(s_lbl_hint, 8, PREVIEW_Y + preview_h + 14);
 
+    /* 密码开锁入口（长按是管理员，这个是日常备用开锁） */
+    make_btn(s_scr, "密码", 232, PREVIEW_Y + preview_h + 6, 76, 38,
+             pw_entry_cb, NULL, 0x2b3a4a, 0xffffff);
+
     /* ④ 通行成功（照设计稿：顶部时间+开锁中标签 / 勾 / 大字 / 副标 / 底部提示） */
     s_ov_ok = make_overlay(0x1f7a33);
 
@@ -450,8 +475,8 @@ void ui_init(uint8_t *preview_buf, int preview_w, int preview_h)
 
     /* 管理员密码 */
     s_ov_auth = make_overlay(0x0d131b);
-    lv_obj_t *at = make_label(s_ov_auth, "管理员验证", &lv_font_misans_24, 0xffffff);
-    lv_obj_align(at, LV_ALIGN_TOP_MID, 0, 40);
+    s_lbl_auth_title = make_label(s_ov_auth, "管理员验证", &lv_font_misans_24, 0xffffff);
+    lv_obj_align(s_lbl_auth_title, LV_ALIGN_TOP_MID, 0, 40);
     s_lbl_pw = make_label(s_ov_auth, "输入密码", &lv_font_misans_24, 0xffffff);
     lv_obj_align(s_lbl_pw, LV_ALIGN_TOP_MID, 0, 100);
 
@@ -755,6 +780,13 @@ void ui_frame_feed(int n_face, const face_box_t *box)
     } else if (s_state == UI_SCANNING && s_stable == 0) {
         ui_set_state(UI_STANDBY);
     }
+}
+
+bool ui_take_pw_unlock_request(void)
+{
+    if (!s_pw_unlock_req) return false;
+    s_pw_unlock_req = false;
+    return true;
 }
 
 void ui_unlock_result(int result)

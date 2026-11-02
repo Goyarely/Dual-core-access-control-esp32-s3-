@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include "lvgl.h"
 #include "face_engine.h"
+#include <stdbool.h>
 
 /*
  * 八界面状态机（总览 doc 的 ①~⑧）
@@ -55,6 +56,9 @@ typedef enum {
 
 /** 识别结果回填：title = 大字（如「成员 3」），sub = 副标题（如「编号 03 · 相似度 0.92」） */
 void ui_recog_result(ui_recog_t r, const char *title, const char *sub, float sim);
+
+/** 密码开锁请求：触摸屏上密码校验通过后由 main 取走并发给 GD32 */
+bool ui_take_pw_unlock_request(void);
 
 /** 开锁结果回填：更新成功页底部提示（门已开 / 被拒绝 / 锁定中） */
 void ui_unlock_result(int result);
