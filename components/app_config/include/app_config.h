@@ -60,6 +60,10 @@
 /* M8 自测：IO10 短接 IO11 做自环；接上 GD32 后改成 0 */
 #define LINK_LOOPBACK_TEST  0
 
+/* M9b 联调开关：每 10 秒自动发一次开锁请求，用来验证继电器链路。
+ * M11 接通真实触发路径后改成 0 */
+#define UNLOCK_SELFTEST     1
+
 /* ---------------- 门禁策略 ---------------- */
 #define FACE_STABLE_FRAMES  3      /* 连续检测稳定这么多帧才触发识别 */
 #define FACE_SIM_THRESHOLD  0.50f  /* 相似度阈值，M5 用正负样本分布标定 */

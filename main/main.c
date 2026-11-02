@@ -29,6 +29,7 @@
 #include "ui_main.h"
 #include "app_settings.h"
 #include "link_task.h"
+#include "link_proto.h"
 
 static const char *TAG = "door_access";
 
@@ -129,6 +130,23 @@ static void camera_task(void *arg)
     }
 }
 
+#if UNLOCK_SELFTEST
+/* 临时自测：每 10 秒发一次开锁请求，验证 ESP32 → GD32 → 继电器 全链路 */
+static void unlock_selftest_task(void *arg)
+{
+    while (1) {
+        vTaskDelay(pdMS_TO_TICKS(10000));
+        uint8_t remain = 0;
+        int r = link_unlock_request(LINK_REASON_FACE, &remain);
+        if (r < 0) {
+            ESP_LOGW(TAG, "[selftest] 开锁请求无应答（链路不通？）");
+        } else {
+            ESP_LOGI(TAG, "[selftest] 开锁应答 result=%d remain=%u", r, remain);
+        }
+    }
+}
+#endif
+
 /* 1 秒节拍：锁定倒计时、成功/拒绝页自动回落 */
 static void ui_tick_task(void *arg)
 {
@@ -192,6 +210,9 @@ void app_main(void)
 
     xTaskCreatePinnedToCore(camera_task, "cam", 8192, NULL, 3, NULL, 1);
     xTaskCreatePinnedToCore(ui_tick_task, "ui_tick", 3072, NULL, 3, NULL, 0);
+#if UNLOCK_SELFTEST
+    xTaskCreatePinnedToCore(unlock_selftest_task, "unlock_test", 4096, NULL, 3, NULL, 0);
+#endif
     xTaskCreatePinnedToCore(heartbeat_task, "hb", 3072, NULL, 2, NULL, 0);
 
     ESP_LOGI(TAG, "M6 UI ready, %d faces in lib", face_recog_count());
