@@ -62,7 +62,7 @@
 
 /* M9b 联调开关：每 10 秒自动发一次开锁请求，用来验证继电器链路。
  * M11 接通真实触发路径后改成 0 */
-#define UNLOCK_SELFTEST     1
+#define UNLOCK_SELFTEST     0
 
 /* ---------------- 门禁策略 ---------------- */
 #define FACE_STABLE_FRAMES  3      /* 连续检测稳定这么多帧才触发识别 */

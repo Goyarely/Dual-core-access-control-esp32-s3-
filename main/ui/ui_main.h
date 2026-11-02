@@ -56,6 +56,9 @@ typedef enum {
 /** 识别结果回填：title = 大字（如「成员 3」），sub = 副标题（如「编号 03 · 相似度 0.92」） */
 void ui_recog_result(ui_recog_t r, const char *title, const char *sub, float sim);
 
+/** 开锁结果回填：更新成功页底部提示（门已开 / 被拒绝 / 锁定中） */
+void ui_unlock_result(int result);
+
 /** 录入结果回填 */
 void ui_enroll_result(bool ok, int total);
 

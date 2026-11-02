@@ -35,6 +35,7 @@ static lv_obj_t *s_ov_ok;
 static lv_obj_t *s_lbl_ok_name;
 static lv_obj_t *s_lbl_ok_sub;
 static lv_obj_t *s_lbl_ok_time;
+static lv_obj_t *s_lbl_ok_foot;
 
 static lv_obj_t *s_ov_no;
 static lv_obj_t *s_lbl_no_reason;
@@ -426,8 +427,8 @@ void ui_init(uint8_t *preview_buf, int preview_w, int preview_h)
     lv_obj_set_pos(foot, 0, V_RES - 46);
     lv_obj_set_style_bg_color(foot, lv_color_hex(0x17612a), 0);
     lv_obj_set_style_bg_opa(foot, LV_OPA_COVER, 0);
-    lv_obj_t *foot_lbl = make_label(foot, "门已开 · 2s 后自动落锁", &lv_font_misans_16, 0xd8f3e1);
-    lv_obj_center(foot_lbl);
+    s_lbl_ok_foot = make_label(foot, "门已开 · 2s 后自动落锁", &lv_font_misans_16, 0xd8f3e1);
+    lv_obj_center(s_lbl_ok_foot);
 
     /* ⑤ 通行拒绝 */
     s_ov_no = make_overlay(0xa72b22);
@@ -573,6 +574,7 @@ void ui_set_state(ui_state_t st)
         break;
 
     case UI_SUCCESS:
+        if (s_lbl_ok_foot) lv_label_set_text(s_lbl_ok_foot, "正在开锁...");
         lv_obj_add_flag(s_img, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(s_lbl_hint, LV_OBJ_FLAG_HIDDEN);
         lv_obj_remove_flag(s_ov_ok, LV_OBJ_FLAG_HIDDEN);
@@ -753,6 +755,23 @@ void ui_frame_feed(int n_face, const face_box_t *box)
     } else if (s_state == UI_SCANNING && s_stable == 0) {
         ui_set_state(UI_STANDBY);
     }
+}
+
+void ui_unlock_result(int result)
+{
+    if (s_lbl_ok_foot == NULL) return;
+
+    const char *txt;
+    uint32_t color;
+    switch (result) {
+    case 0:  txt = "门已开 · 2s 后自动落锁"; color = 0xd8f3e1; break;
+    case 1:  txt = "开锁被拒绝";             color = 0xffd7d4; break;
+    case 2:  txt = "请求被判定为重放";        color = 0xffd7d4; break;
+    case 3:  txt = "锁定中，请稍后再试";      color = 0xffe6b3; break;
+    default: txt = "开锁失败 链路无应答";      color = 0xffd7d4; break;
+    }
+    lv_label_set_text(s_lbl_ok_foot, txt);
+    lv_obj_set_style_text_color(s_lbl_ok_foot, lv_color_hex(color), 0);
 }
 
 void ui_recog_result(ui_recog_t r, const char *title, const char *sub, float sim)

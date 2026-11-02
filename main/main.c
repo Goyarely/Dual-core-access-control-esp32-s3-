@@ -93,6 +93,16 @@ static void camera_task(void *arg)
             bsp_lvgl_lock();
             ui_recog_result(res, title, sub, sim);
             bsp_lvgl_unlock();
+
+            /* 识别通过 → 向 GD32 申请开锁（GD32 有权拒绝：锁定/重放/状态机不允许） */
+            if (res == UI_RECOG_HIT) {
+                uint8_t remain = 0;
+                int ur = link_unlock_request(LINK_REASON_FACE, &remain);
+                ESP_LOGI(TAG, "-> GD32 开锁结果=%d remain=%u", ur, remain);
+                bsp_lvgl_lock();
+                ui_unlock_result(ur);
+                bsp_lvgl_unlock();
+            }
         }
 
         if (need_enroll) {
