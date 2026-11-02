@@ -28,6 +28,7 @@
 #include "face_engine.h"
 #include "ui_main.h"
 #include "app_settings.h"
+#include "link_task.h"
 
 static const char *TAG = "door_access";
 
@@ -181,6 +182,13 @@ void app_main(void)
     ESP_ERROR_CHECK(face_recog_init());
     ESP_ERROR_CHECK(bsp_camera_init());
     bsp_lcd_set_backlight(80);
+
+    /* 双板链路（UART1，IO10/IO11） */
+    ESP_ERROR_CHECK(link_task_start());
+#if LINK_LOOPBACK_TEST
+    vTaskDelay(pdMS_TO_TICKS(300));
+    link_loopback_test(3);
+#endif
 
     xTaskCreatePinnedToCore(camera_task, "cam", 8192, NULL, 3, NULL, 1);
     xTaskCreatePinnedToCore(ui_tick_task, "ui_tick", 3072, NULL, 3, NULL, 0);
