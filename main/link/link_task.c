@@ -56,12 +56,19 @@ static void tx_frame(uint8_t type, uint8_t seq, const void *payload, uint8_t len
 static void handle_frame(const link_frame_t *f)
 {
     s_last_rx_us = esp_timer_get_time();
-    s_online = true;
+    if (!s_online) {
+        s_online = true;
+        ESP_LOGI(TAG, "链路在线（收到对端帧）");
+    }
 
-    if (!link_rx_accept(&s_rx_win, f->seq)) {
-        ESP_LOGW(TAG, "重复帧 seq=%u type=%u，丢弃", f->seq, f->type);
+    /* 去重窗口只保护 UNLOCK_REQ：心跳/ACK/状态帧本身幂等，
+     * 而且对端重启后 seq 会回到 0，若一并去重会被窗口判成"倒退太远"，
+     * 表现是明明通着却持续十几秒显示离线（2026-11-02 实测）。 */
+    if (f->type == LINK_T_UNLOCK_REQ && !link_rx_accept(&s_rx_win, f->seq)) {
+        ESP_LOGW(TAG, "重复的开锁请求 seq=%u，丢弃", f->seq);
         return;
     }
+    ESP_LOGD(TAG, "RX type=%u seq=%u len=%u", f->type, f->seq, f->len);
 
     switch (f->type) {
     case LINK_T_HEARTBEAT: {
@@ -144,7 +151,7 @@ static void heartbeat_task(void *arg)
         uint8_t pl[8];
         size_t n = link_pack_heartbeat(pl, &hb);
         tx_frame(LINK_T_HEARTBEAT, next_seq(), pl, (uint8_t)n);
-        if (!s_online) ESP_LOGW(TAG, "心跳已发，但对端仍无响应");
+        if (!s_online) ESP_LOGW(TAG, "心跳已发，但对端仍无响应（%us）", (unsigned)hb.epoch);
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }

@@ -58,7 +58,7 @@
 #define LINK_RX_GPIO        11
 #define LINK_BAUD           115200
 /* M8 自测：IO10 短接 IO11 做自环；接上 GD32 后改成 0 */
-#define LINK_LOOPBACK_TEST  1
+#define LINK_LOOPBACK_TEST  0
 
 /* ---------------- 门禁策略 ---------------- */
 #define FACE_STABLE_FRAMES  3      /* 连续检测稳定这么多帧才触发识别 */
