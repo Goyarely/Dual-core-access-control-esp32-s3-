@@ -6,3 +6,6 @@ dependencies.lock
 *.log
 __pycache__/
 *.pyc
+
+# 本地 WiFi 凭据（模板见 wifi_creds.h.example）
+components/net/include/wifi_creds.h

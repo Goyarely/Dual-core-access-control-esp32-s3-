@@ -30,6 +30,8 @@
 #include "app_settings.h"
 #include "link_task.h"
 #include "link_proto.h"
+#include "net_report.h"
+#include "nvs_flash.h"
 
 static const char *TAG = "door_access";
 
@@ -76,6 +78,7 @@ static void camera_task(void *arg)
             bsp_lvgl_lock();
             ui_unlock_result(ur);
             bsp_lvgl_unlock();
+            net_report_push("管理员", ur == 0 ? "OK" : "DENIED", "password", 1.0f);
         }
 
         if (need_recog) {
@@ -113,6 +116,13 @@ static void camera_task(void *arg)
                 bsp_lvgl_lock();
                 ui_unlock_result(ur);
                 bsp_lvgl_unlock();
+
+                /* 上报后端：门禁的"可追溯"就落在这条记录上 */
+                net_report_push(title, ur == 0 ? "OK" :
+                                (ur == 2 ? "REPLAY" : (ur == 3 ? "LOCKED" : "DENIED")),
+                                "face", sim);
+            } else if (res == UI_RECOG_STRANGER) {
+                net_report_push("陌生人", "DENIED", "face", sim);
             }
         }
 
@@ -221,6 +231,18 @@ void app_main(void)
     ESP_ERROR_CHECK(face_recog_init());
     ESP_ERROR_CHECK(bsp_camera_init());
     bsp_lcd_set_backlight(80);
+
+    /* WiFi + 后端上报：失败不影响门禁本体，只影响记录 */
+    esp_err_t nerr = nvs_flash_init();
+    if (nerr == ESP_ERR_NVS_NO_FREE_PAGES || nerr == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        nvs_flash_erase();
+        nerr = nvs_flash_init();
+    }
+    if (nerr == ESP_OK) {
+        net_report_start();
+    } else {
+        ESP_LOGW(TAG, "NVS 初始化失败，跳过网络上报");
+    }
 
     /* 双板链路（UART1，IO10/IO11） */
     ESP_ERROR_CHECK(link_task_start());

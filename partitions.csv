@@ -2,5 +2,5 @@
 nvs,      data, nvs,     0x9000,  40k
 otadata,  data, ota,     0x13000, 8k
 phy_init, data, phy,     0x15000, 4k
-factory,  app,  factory, 0x20000, 4M
-storage,  data, fat,     ,        1M
+factory,  app,  factory, 0x20000, 6M
+storage,  data, fat,     ,        2M

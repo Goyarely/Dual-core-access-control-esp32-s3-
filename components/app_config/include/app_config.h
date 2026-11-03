@@ -57,6 +57,9 @@
 #define LINK_TX_GPIO        10
 #define LINK_RX_GPIO        11
 #define LINK_BAUD           115200
+
+/* 后端上报地址（PC 上跑 tools/backend/server.py 的那台机器） */
+#define BACKEND_URL         "http://10.78.54.172:8080/api/record"
 /* M8 自测：IO10 短接 IO11 做自环；接上 GD32 后改成 0 */
 #define LINK_LOOPBACK_TEST  0
 

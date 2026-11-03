@@ -1,0 +1,4 @@
+#pragma once
+/* 复制成 wifi_creds.h 并填自己的 2.4GHz WiFi（ESP32-S3 不支持 5GHz） */
+#define WIFI_SSID   "your-ssid"
+#define WIFI_PASS   "your-password"
