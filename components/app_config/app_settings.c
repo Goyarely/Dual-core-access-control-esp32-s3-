@@ -15,6 +15,7 @@ void app_settings_reset_default(void)
     s_cfg.sim_thr = FACE_SIM_THRESHOLD;
     s_cfg.fail_max = FAIL_MAX;
     s_cfg.lockout_sec = LOCKOUT_SEC;
+    s_cfg.live_mode = LIVE_SUSPICIOUS;   /* 默认只在可疑时要求转头 */
 }
 
 app_settings_t *app_settings(void)
@@ -29,10 +30,11 @@ app_settings_t *app_settings(void)
             if (fread(&t, sizeof(t), 1, f) == 1 &&
                 t.sim_thr > 0.1f && t.sim_thr < 0.99f &&
                 t.fail_max >= 1 && t.fail_max <= 20 &&
-                t.lockout_sec >= 5 && t.lockout_sec <= 600) {
+                t.lockout_sec >= 5 && t.lockout_sec <= 600 &&
+                t.live_mode >= 0 && t.live_mode <= 2) {
                 s_cfg = t;
-                ESP_LOGI(TAG, "load: thr=%.2f fail=%d lock=%ds",
-                         s_cfg.sim_thr, s_cfg.fail_max, s_cfg.lockout_sec);
+                ESP_LOGI(TAG, "load: thr=%.2f fail=%d lock=%ds live=%d",
+                         s_cfg.sim_thr, s_cfg.fail_max, s_cfg.lockout_sec, s_cfg.live_mode);
             } else {
                 ESP_LOGW(TAG, "settings.bin 内容异常，用默认值");
             }

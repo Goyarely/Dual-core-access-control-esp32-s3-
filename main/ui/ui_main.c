@@ -44,6 +44,11 @@ static lv_obj_t *s_lbl_no_sub;
 static lv_obj_t *s_ov_lock;
 static lv_obj_t *s_lbl_lock_cnt;
 
+static lv_obj_t *s_ov_live;
+static lv_obj_t *s_bar_live;
+static int s_live_min_x, s_live_max_x;
+static bool s_live_seen;
+
 static lv_obj_t *s_ov_auth;
 static lv_obj_t *s_lbl_pw;
 
@@ -59,6 +64,7 @@ static lv_obj_t *s_ov_set;
 static lv_obj_t *s_lbl_thr;
 static lv_obj_t *s_lbl_fail;
 static lv_obj_t *s_lbl_lock;
+static lv_obj_t *s_lbl_live;
 static lv_obj_t *s_ov_enroll;
 static lv_obj_t *s_lbl_enroll_tip;
 static lv_obj_t *s_bar_enroll;
@@ -305,6 +311,12 @@ static void settings_refresh(void)
     lv_label_set_text(s_lbl_fail, b);
     snprintf(b, sizeof(b), "锁定时间  %d 秒", c->lockout_sec);
     lv_label_set_text(s_lbl_lock, b);
+
+#if LIVENESS_ENABLE
+    static const char *live_txt[] = {"关闭", "可疑时", "总是"};
+    snprintf(b, sizeof(b), "活体检测  %s", live_txt[c->live_mode]);
+    lv_label_set_text(s_lbl_live, b);
+#endif
 }
 
 /* user_data = (字段号 << 1) | 方向(1=加,0=减) */
@@ -323,10 +335,14 @@ static void set_adj_cb(lv_event_t *e)
         c->fail_max += dir;
         if (c->fail_max < 1) c->fail_max = 1;
         if (c->fail_max > 10) c->fail_max = 10;
-    } else {
+    } else if (field == 2) {
         c->lockout_sec += dir * 10;
         if (c->lockout_sec < 10) c->lockout_sec = 10;
         if (c->lockout_sec > 300) c->lockout_sec = 300;
+    } else {
+        c->live_mode += dir;
+        if (c->live_mode < 0) c->live_mode = 2;
+        if (c->live_mode > 2) c->live_mode = 0;
     }
     settings_refresh();
 }
@@ -455,6 +471,22 @@ void ui_init(uint8_t *preview_buf, int preview_w, int preview_h)
     s_lbl_ok_foot = make_label(foot, "门已开 · 2s 后自动落锁", &lv_font_misans_16, 0xd8f3e1);
     lv_obj_center(s_lbl_ok_foot);
 
+    /* ④b 活体验证：转头挑战 */
+    s_ov_live = make_overlay(0x102a43);
+    lv_obj_t *lv_title = make_label(s_ov_live, "活体验证", &lv_font_misans_24, 0xffffff);
+    lv_obj_align(lv_title, LV_ALIGN_CENTER, 0, -110);
+    lv_obj_t *lv_tip = make_label(s_ov_live, "请缓慢左右转头", &lv_font_misans_16, 0x9fc7e8);
+    lv_obj_align(lv_tip, LV_ALIGN_CENTER, 0, -60);
+
+    s_bar_live = lv_bar_create(s_ov_live);
+    lv_obj_set_size(s_bar_live, 220, 14);
+    lv_obj_align(s_bar_live, LV_ALIGN_CENTER, 0, 10);
+    lv_bar_set_range(s_bar_live, 0, LIVE_MOVE_PX);
+    lv_bar_set_value(s_bar_live, 0, LV_ANIM_OFF);
+
+    lv_obj_t *lv_hint = make_label(s_ov_live, "照片无法通过本步骤", &lv_font_misans_16, 0x6f8fae);
+    lv_obj_align(lv_hint, LV_ALIGN_CENTER, 0, 70);
+
     /* ⑤ 通行拒绝 */
     s_ov_no = make_overlay(0xa72b22);
     lv_obj_t *no_title = make_label(s_ov_no, "拒绝通行", &lv_font_misans_24, 0xffffff);
@@ -525,6 +557,10 @@ void ui_init(uint8_t *preview_buf, int preview_w, int preview_h)
     lv_obj_set_pos(s_lbl_fail, 16, 156);
     s_lbl_lock = make_label(s_ov_set, "", &lv_font_misans_16, 0x222b38);
     lv_obj_set_pos(s_lbl_lock, 16, 216);
+#if LIVENESS_ENABLE
+    s_lbl_live = make_label(s_ov_set, "", &lv_font_misans_16, 0x222b38);
+    lv_obj_set_pos(s_lbl_live, 16, 266);
+#endif
 
     make_btn(s_ov_set, "-", 196, 90, 48, 40, set_adj_cb, (void *)(intptr_t)((0 << 1) | 0), 0xdfe5ec, 0x222b38);
     make_btn(s_ov_set, "+", 254, 90, 48, 40, set_adj_cb, (void *)(intptr_t)((0 << 1) | 1), 0xdfe5ec, 0x222b38);
@@ -532,8 +568,12 @@ void ui_init(uint8_t *preview_buf, int preview_w, int preview_h)
     make_btn(s_ov_set, "+", 254, 150, 48, 40, set_adj_cb, (void *)(intptr_t)((1 << 1) | 1), 0xdfe5ec, 0x222b38);
     make_btn(s_ov_set, "-", 196, 210, 48, 40, set_adj_cb, (void *)(intptr_t)((2 << 1) | 0), 0xdfe5ec, 0x222b38);
     make_btn(s_ov_set, "+", 254, 210, 48, 40, set_adj_cb, (void *)(intptr_t)((2 << 1) | 1), 0xdfe5ec, 0x222b38);
+#if LIVENESS_ENABLE
+    make_btn(s_ov_set, "-", 196, 260, 48, 40, set_adj_cb, (void *)(intptr_t)((3 << 1) | 0), 0xdfe5ec, 0x222b38);
+    make_btn(s_ov_set, "+", 254, 260, 48, 40, set_adj_cb, (void *)(intptr_t)((3 << 1) | 1), 0xdfe5ec, 0x222b38);
+#endif
 
-    make_btn(s_ov_set, "保存", 20, 290, 280, 48, settings_save_cb, NULL, 0x2e7d32, 0xffffff);
+    make_btn(s_ov_set, "保存", 20, 330, 280, 48, settings_save_cb, NULL, 0x2e7d32, 0xffffff);
     make_btn(s_ov_set, "返回", 20, 400, 280, 44, list_back_cb, NULL, 0xdfe5ec, 0x222b38);
 
     /* ⑦ 录入进度：覆盖层不能挡住预览，只留底部一条半透明条 */
@@ -575,6 +615,7 @@ void ui_set_state(ui_state_t st)
     lv_obj_add_flag(s_ov_no, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(s_ov_lock, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(s_ov_auth, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(s_ov_live, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(s_ov_menu, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(s_ov_list, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(s_ov_set, LV_OBJ_FLAG_HIDDEN);
@@ -615,6 +656,14 @@ void ui_set_state(ui_state_t st)
         lv_obj_add_flag(s_img, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(s_lbl_hint, LV_OBJ_FLAG_HIDDEN);
         lv_obj_remove_flag(s_ov_lock, LV_OBJ_FLAG_HIDDEN);
+        break;
+
+    case UI_LIVENESS:
+        lv_obj_remove_flag(s_ov_live, LV_OBJ_FLAG_HIDDEN);
+        lv_bar_set_value(s_bar_live, 0, LV_ANIM_OFF);
+        s_live_min_x = 100000;
+        s_live_max_x = -100000;
+        s_live_seen = false;
         break;
 
     case UI_AUTH:
@@ -760,6 +809,34 @@ void ui_frame_feed(int n_face, const face_box_t *box)
         return;
     }
 
+    /* 活体挑战：跟踪人脸框中心的左右位移 */
+    if (s_state == UI_LIVENESS) {
+        if (n_face > 0 && box != NULL) {
+            show_bracket(box);
+            int cx = (box->x1 + box->x2) / 2;
+            if (!s_live_seen) {
+                s_live_seen = true;
+                s_live_min_x = s_live_max_x = cx;
+            }
+            if (cx < s_live_min_x) s_live_min_x = cx;
+            if (cx > s_live_max_x) s_live_max_x = cx;
+
+            int span = s_live_max_x - s_live_min_x;
+            lv_bar_set_value(s_bar_live, span > LIVE_MOVE_PX ? LIVE_MOVE_PX : span, LV_ANIM_OFF);
+
+            if (span >= LIVE_MOVE_PX) {
+                ESP_LOGI(TAG, "liveness pass, span=%d", span);
+                ui_set_state(UI_SCANNING);
+                s_recog_req = true;
+                return;
+            }
+        } else {
+            hide_bracket();
+            s_live_seen = false;      /* 脸离开就重新量 */
+        }
+        return;
+    }
+
     if (s_state != UI_STANDBY && s_state != UI_SCANNING) {
         hide_bracket();
         return;
@@ -775,6 +852,15 @@ void ui_frame_feed(int n_face, const face_box_t *box)
     }
 
     if (s_state == UI_STANDBY && s_stable >= FACE_STABLE_FRAMES && !s_must_leave) {
+#if LIVENESS_ENABLE
+        int mode = app_settings()->live_mode;
+        bool need_live = (mode == LIVE_ALWAYS) ||
+                         (mode == LIVE_SUSPICIOUS && s_fail_cnt > 0);
+        if (need_live) {
+            ui_set_state(UI_LIVENESS);
+            return;
+        }
+#endif
         ui_set_state(UI_SCANNING);
         s_recog_req = true;
     } else if (s_state == UI_SCANNING && s_stable == 0) {
@@ -875,6 +961,18 @@ void ui_tick_1s(void)
         ui_set_state(s_hold_target);
         return;
     }
+    /* 活体超时：8 秒没转够 → 判失败（照片就是这个表现） */
+    if (s_state == UI_LIVENESS && lv_tick_elaps(s_state_tick) > LIVE_TIMEOUT_MS) {
+        ESP_LOGW(TAG, "liveness timeout, span=%d", s_live_max_x - s_live_min_x);
+        s_must_leave = true;
+        s_fail_cnt++;
+        lv_label_set_text(s_lbl_no_reason, "未检测到转头");
+        lv_label_set_text(s_lbl_no_sub, "照片无法通过活体验证");
+        ui_set_state(UI_DENIED);
+        s_hold_tick = lv_tick_get();
+        return;
+    }
+
     uint32_t el = lv_tick_elaps(s_state_tick) / 1000;
 
     switch (s_state) {
@@ -900,6 +998,14 @@ void ui_tick_1s(void)
     case UI_MEMBERS:
     case UI_DELETE:
     case UI_SETTINGS:
+    case UI_LIVENESS:
+        lv_obj_remove_flag(s_ov_live, LV_OBJ_FLAG_HIDDEN);
+        lv_bar_set_value(s_bar_live, 0, LV_ANIM_OFF);
+        s_live_min_x = 100000;
+        s_live_max_x = -100000;
+        s_live_seen = false;
+        break;
+
     case UI_AUTH:
         if (el >= MENU_IDLE_SEC) ui_set_state(UI_STANDBY);
         break;

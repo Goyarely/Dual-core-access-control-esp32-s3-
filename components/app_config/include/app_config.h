@@ -71,6 +71,15 @@
 #define LOCKOUT_SEC         60     /* 超限锁定秒数 */
 #define UNLOCK_SEC          2      /* 继电器吸合时长 */
 #define MEMBER_MAX          64     /* 人脸库容量 */
+/* 活体检测（动作挑战）：默认关闭
+ * 原因：常见门禁不该每次要求转头，日常通行体验太差；
+ *       而单目 RGB 摄像头做不了无感（静默）活体。
+ * 代码保留，需要时改成 1 即启用（设置页里的策略项也随之出现）。 */
+#define LIVENESS_ENABLE     0
+
+#define LIVE_MOVE_PX        40     /* 中心点左右位移阈值（像素） */
+#define LIVE_TIMEOUT_MS     8000   /* 8 秒内没转够就算失败 */
+
 #define ENROLL_FRAMES       10     /* 录入采集帧数：3 帧太快，脸还没摆正就采完了 */
 #define ENROLL_MIN_FACE_W   80     /* 采集时人脸框最小宽度（竖屏 240 宽空间），太小视为没凑近 */
 #define ENROLL_CENTER_TOL   70     /* 框中心离画面中心的最大偏差 */

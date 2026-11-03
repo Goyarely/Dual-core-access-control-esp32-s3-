@@ -23,7 +23,7 @@
 typedef enum {
     UI_STANDBY = 0,
     UI_SCANNING,
-    UI_LIVENESS,      /* M6 未接入，留给 M10 */
+    UI_LIVENESS,      /* 活体挑战：请缓慢左右转头（M10） */
     UI_SUCCESS,
     UI_DENIED,
     UI_LOCKOUT,

@@ -12,7 +12,13 @@ typedef struct {
     float sim_thr;      /* 相似度阈值 0.40~0.90 */
     int   fail_max;     /* 连续失败上限 1~10 */
     int   lockout_sec;  /* 锁定秒数 10~300 */
+    int   live_mode;    /* 活体策略：0=关闭 1=可疑时(默认) 2=总是 */
 } app_settings_t;
+
+/* 活体策略取值 */
+#define LIVE_OFF        0
+#define LIVE_SUSPICIOUS 1   /* 只有前面出现过失败才要求转头（默认） */
+#define LIVE_ALWAYS     2
 
 /** 取当前配置（首次调用会尝试从 /storage 读入，读不到用默认值） */
 app_settings_t *app_settings(void);
