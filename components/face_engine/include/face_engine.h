@@ -61,6 +61,7 @@ int face_members(uint16_t *ids, int max);
 /** 删除指定 id 的成员（同时更新索引文件） */
 esp_err_t face_delete_member(uint16_t id);
 
+
 #ifdef __cplusplus
 }
 #endif

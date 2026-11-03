@@ -78,7 +78,7 @@ static void camera_task(void *arg)
             bsp_lvgl_lock();
             ui_unlock_result(ur);
             bsp_lvgl_unlock();
-            net_report_push("管理员", ur == 0 ? "OK" : "DENIED", "password", 1.0f);
+            net_report_push(0, "管理员", ur == 0 ? "OK" : "DENIED", "password", 1.0f);
         }
 
         if (need_recog) {
@@ -101,7 +101,10 @@ static void camera_task(void *arg)
                 for (int i = 0; i < cnt; i++) {
                     if (ids[i] == id) { pos = i + 1; break; }
                 }
-                snprintf(title, sizeof(title), "成员 %d", pos);
+                /* 名字以后端人员表为准（设备侧不存名字）；没填名字就回退成"成员 N" */
+                const char *nm = net_member_name(id);
+                snprintf(title, sizeof(title), "%s", nm ? nm : "");
+                if (nm == NULL) snprintf(title, sizeof(title), "成员 %d", pos);
                 snprintf(sub, sizeof(sub), "编号 %02d · 相似度 %.2f", pos, sim);
             }
             bsp_lvgl_lock();
@@ -118,11 +121,11 @@ static void camera_task(void *arg)
                 bsp_lvgl_unlock();
 
                 /* 上报后端：门禁的"可追溯"就落在这条记录上 */
-                net_report_push(title, ur == 0 ? "OK" :
+                net_report_push(id, title, ur == 0 ? "OK" :
                                 (ur == 2 ? "REPLAY" : (ur == 3 ? "LOCKED" : "DENIED")),
                                 "face", sim);
             } else if (res == UI_RECOG_STRANGER) {
-                net_report_push("陌生人", "DENIED", "face", sim);
+                net_report_push(0, "陌生人", "DENIED", "face", sim);
             }
         }
 

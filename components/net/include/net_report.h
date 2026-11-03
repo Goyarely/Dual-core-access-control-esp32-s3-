@@ -1,6 +1,7 @@
 #pragma once
 #include "esp_err.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 /*
  * net_report —— 通行记录上报（WiFi + HTTP POST）
@@ -18,9 +19,22 @@ bool net_report_online(void);
 
 /**
  * @brief 投递一条通行记录（非阻塞，队列满则丢弃并打印警告）
- * @param member  成员名（如 Person_1），拒绝时传 "陌生人"
+ * @param mid     成员在库里的 id（0 = 未识别/管理员），后端据此关联姓名
+ * @param member  设备侧文字（如 "成员 3"），后端没设姓名时兜底显示
  * @param result  "OK" / "DENIED" / "REPLAY" / "LOCKED"
  * @param reason  "face" / "password" / "admin"
  * @param sim     相似度（0~1，没有就传 0）
  */
-void net_report_push(const char *member, const char *result, const char *reason, float sim);
+void net_report_push(uint16_t mid, const char *member, const char *result,
+                     const char *reason, float sim);
+
+/**
+ * @brief 查成员姓名（来自后端人员表，未知返回 NULL）
+ *
+ * 姓名以后端为唯一来源：设备侧不存名字，开机/每分钟拉一次 /api/members。
+ * 后端没填名字时返回 NULL，调用方回退成"成员 N"。
+ */
+const char *net_member_name(uint16_t mid);
+
+/** 立即拉取一次人员表（连上 WiFi 后会自动调用） */
+void net_members_refresh(void);

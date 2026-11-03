@@ -1,6 +1,8 @@
 #include "face_engine.h"
 
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_vfs_fat.h"
@@ -163,6 +165,7 @@ static bool detect_full(const uint8_t *buf, int w, int h,
  * 所以不自己维护索引，直接读文件最可靠——
  * 之前用"自建索引"在清库/删除后 id 必然错位，导致删除总是 ESP_FAIL。 */
 #define DB_FILE "/storage/face.db"
+#define MEMBER_MAX_IDS 64
 
 typedef struct {
     uint16_t num_feats_total;
