@@ -9,3 +9,6 @@ __pycache__/
 
 # 本地 WiFi 凭据（模板见 wifi_creds.h.example）
 components/net/include/wifi_creds.h
+
+# 后端数据库（运行时生成）
+tools/backend/records.db
